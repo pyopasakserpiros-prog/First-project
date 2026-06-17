@@ -1,0 +1,2737 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+    <title>Jianghu RPG — ยุทธภพแห่งเซียนยุทธ์</title>
+
+    <!-- Import Modules (ES Modules) -->
+    <script type="importmap">
+        {
+            "imports": {
+                "./js/player.js": "./js/player.js",
+                "./js/inventory.js": "./js/inventory.js",
+                "./js/equipment edit.js": "./js/equipment edit.js",
+                "./js/save.js": "./js/save.js",
+                "./js/skill database.js": "./js/skill database.js",
+                "./js/item.js": "./js/item.js",
+                "./js/enemy.js": "./js/enemy.js",
+                "./js/boss database.js": "./js/boss database.js",
+                "./js/mini_boss.js": "./js/mini_boss.js",
+                "./js/drop table.js": "./js/drop table.js",
+                "./js/map.js": "./js/map.js",
+                "./js/event.js": "./js/event.js",
+                "./js/class progression.js": "./js/class progression.js",
+                "./js/followers database.js": "./js/followers database.js",
+                "./js/battle.js": "./js/battle.js",
+                "./js/exploration.js": "./js/exploration.js",
+                "./js/item_generator.js": "./js/item_generator.js"
+            }
+        }
+    </script>
+
+    <style>
+        /* ============================================================
+               GLOBAL RESET & BASE
+            ============================================================ */
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0d0b0a;
+            --bg-secondary: #1a1614;
+            --bg-panel: #231f1b;
+            --bg-card: #2c2722;
+            --bg-card-hover: #3a332c;
+
+            --text-primary: #efe6d7;
+            --text-secondary: #c4b8a8;
+            --text-muted: #8a7e70;
+            --text-gold: #d4a84b;
+            --text-crimson: #b54a4a;
+            --text-jade: #5f9b7a;
+            --text-spiritual: #6a9bc7;
+
+            --border-gold: #8a6d3b;
+            --border-jade: #3d6b52;
+            --border-crimson: #6b2e2e;
+
+            --hp-color: #c0392b;
+            --hp-bg: #2c1a18;
+            --mp-color: #2980b9;
+            --mp-bg: #18232c;
+            --exp-color: #d4a84b;
+            --exp-bg: #2c2418;
+
+            --shadow-panel: 0 4px 24px rgba(0, 0, 0, 0.7);
+            --radius-panel: 8px;
+            --radius-card: 4px;
+
+            --font-serif: 'Georgia', 'Times New Roman', serif;
+            --font-sans: 'Segoe UI', 'Roboto', system-ui, sans-serif;
+        }
+
+        html {
+            font-size: 16px;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 12px;
+            background-image:
+                radial-gradient(ellipse at 20% 50%, rgba(60, 40, 20, 0.3) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 50%, rgba(30, 50, 60, 0.2) 0%, transparent 60%),
+                linear-gradient(180deg, #0d0b0a 0%, #1a1614 100%);
+        }
+
+        /* ============================================================
+               SCROLLBAR
+            ============================================================ */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-gold);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-gold);
+        }
+
+        /* ============================================================
+               MAIN LAYOUT
+            ============================================================ */
+        #app {
+            width: 100%;
+            max-width: 1200px;
+            height: 96vh;
+            max-height: 900px;
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            grid-template-columns: 200px 1fr;
+            grid-template-areas:
+                "header header"
+                "sidebar main"
+                "footer footer";
+            gap: 8px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-gold);
+            border-radius: var(--radius-panel);
+            box-shadow: var(--shadow-panel), inset 0 0 60px rgba(60, 40, 20, 0.1);
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* ============================================================
+               HEADER
+            ============================================================ */
+        #header {
+            grid-area: header;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 16px;
+            background: linear-gradient(180deg, #1f1a16, #161210);
+            border-bottom: 1px solid var(--border-gold);
+            flex-wrap: wrap;
+            gap: 6px 12px;
+            min-height: 56px;
+        }
+
+        #header .game-title {
+            font-family: var(--font-serif);
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-gold);
+            letter-spacing: 2px;
+            text-shadow: 0 0 20px rgba(212, 168, 75, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        #header .game-title small {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            letter-spacing: 0;
+        }
+
+        #header .player-mini-stats {
+            display: flex;
+            align-items: center;
+            gap: 12px 20px;
+            flex-wrap: wrap;
+            font-size: 0.75rem;
+        }
+        #header .player-mini-stats .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-secondary);
+        }
+        #header .player-mini-stats .stat-item .label {
+            color: var(--text-muted);
+        }
+        #header .player-mini-stats .stat-item .value {
+            color: var(--text-primary);
+            font-weight: 600;
+            min-width: 24px;
+        }
+        #header .player-mini-stats .stat-item .value.gold {
+            color: var(--text-gold);
+        }
+        #header .player-mini-stats .stat-item .value.hp {
+            color: var(--hp-color);
+        }
+        #header .player-mini-stats .stat-item .value.mp {
+            color: var(--mp-color);
+        }
+
+        #header .save-controls {
+            display: flex;
+            gap: 4px;
+        }
+        #header .save-controls button {
+            background: transparent;
+            border: 1px solid var(--border-gold);
+            color: var(--text-secondary);
+            padding: 4px 12px;
+            border-radius: var(--radius-card);
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        #header .save-controls button:hover {
+            background: var(--border-gold);
+            color: var(--bg-primary);
+        }
+
+        /* ============================================================
+               SIDEBAR (Navigation)
+            ============================================================ */
+        #sidebar {
+            grid-area: sidebar;
+            background: var(--bg-panel);
+            border-right: 1px solid rgba(138, 109, 59, 0.3);
+            padding: 8px 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            overflow-y: auto;
+        }
+
+        #sidebar .nav-btn {
+            background: transparent;
+            border: none;
+            border-left: 3px solid transparent;
+            color: var(--text-secondary);
+            padding: 10px 12px;
+            text-align: left;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-radius: 0 4px 4px 0;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+        }
+        #sidebar .nav-btn:hover {
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+        #sidebar .nav-btn.active {
+            border-left-color: var(--text-gold);
+            background: var(--bg-card);
+            color: var(--text-gold);
+        }
+        #sidebar .nav-btn .icon {
+            font-size: 1rem;
+            width: 20px;
+            text-align: center;
+        }
+
+        /* ============================================================
+               MAIN CONTENT
+            ============================================================ */
+        #main {
+            grid-area: main;
+            background: var(--bg-secondary);
+            padding: 12px 16px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        /* ============================================================
+               FOOTER
+            ============================================================ */
+        #footer {
+            grid-area: footer;
+            background: var(--bg-panel);
+            border-top: 1px solid rgba(138, 109, 59, 0.2);
+            padding: 4px 16px;
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            min-height: 28px;
+        }
+        #footer .version {
+            color: var(--text-muted);
+        }
+        #footer .status {
+            color: var(--text-jade);
+        }
+
+        /* ============================================================
+               PANEL — Generic
+            ============================================================ */
+        .panel {
+            display: none;
+            animation: fadeIn 0.25s ease;
+        }
+        .panel.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .panel-title {
+            font-family: var(--font-serif);
+            font-size: 1.1rem;
+            color: var(--text-gold);
+            border-bottom: 1px solid var(--border-gold);
+            padding-bottom: 6px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .panel-title .sub {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-family: var(--font-sans);
+            font-weight: 400;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid rgba(138, 109, 59, 0.2);
+            border-radius: var(--radius-card);
+            padding: 12px 16px;
+            margin-bottom: 10px;
+            transition: background 0.2s;
+        }
+        .card:hover {
+            background: var(--bg-card-hover);
+        }
+        .card .card-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+        .card .card-content {
+            font-size: 0.8rem;
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 6px 12px;
+        }
+        .stat-grid .stat-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            padding: 2px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        }
+        .stat-grid .stat-row .label {
+            color: var(--text-muted);
+        }
+        .stat-grid .stat-row .value {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+        .stat-grid .stat-row .value.highlight {
+            color: var(--text-gold);
+        }
+        .stat-grid .stat-row .value.hp-text {
+            color: var(--hp-color);
+        }
+        .stat-grid .stat-row .value.mp-text {
+            color: var(--mp-color);
+        }
+
+        /* ============================================================
+               BATTLE PANEL
+            ============================================================ */
+        #battle-panel .battle-arena {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 12px;
+        }
+
+        #battle-panel .combatant-box {
+            background: var(--bg-panel);
+            border: 1px solid rgba(138, 109, 59, 0.25);
+            border-radius: var(--radius-card);
+            padding: 12px;
+        }
+        #battle-panel .combatant-box .name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 4px;
+        }
+        #battle-panel .combatant-box .name .tag {
+            font-size: 0.6rem;
+            font-weight: 400;
+            color: var(--text-muted);
+            margin-left: 6px;
+        }
+        #battle-panel .combatant-box .hp-bar,
+        #battle-panel .combatant-box .mp-bar {
+            width: 100%;
+            height: 14px;
+            background: var(--hp-bg);
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 2px 0;
+            position: relative;
+        }
+        #battle-panel .combatant-box .hp-bar .fill {
+            height: 100%;
+            background: var(--hp-color);
+            transition: width 0.3s ease;
+            border-radius: 6px;
+        }
+        #battle-panel .combatant-box .mp-bar .fill {
+            height: 100%;
+            background: var(--mp-color);
+            transition: width 0.3s ease;
+            border-radius: 6px;
+        }
+        #battle-panel .combatant-box .bar-label {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            position: absolute;
+            right: 6px;
+            top: 50%;
+            transform: translateY(-50%);
+            text-shadow: 0 0 6px rgba(0, 0, 0, 0.8);
+        }
+
+        #battle-panel .battle-log {
+            background: var(--bg-panel);
+            border: 1px solid rgba(138, 109, 59, 0.15);
+            border-radius: var(--radius-card);
+            padding: 8px 12px;
+            max-height: 180px;
+            overflow-y: auto;
+            font-size: 0.75rem;
+            line-height: 1.6;
+            font-family: var(--font-serif);
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+        }
+        #battle-panel .battle-log .log-entry {
+            padding: 2px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        }
+        #battle-panel .battle-log .log-entry .highlight {
+            color: var(--text-gold);
+        }
+        #battle-panel .battle-log .log-entry .damage {
+            color: var(--hp-color);
+        }
+        #battle-panel .battle-log .log-entry .heal {
+            color: var(--text-jade);
+        }
+        #battle-panel .battle-log .log-entry .system {
+            color: var(--text-spiritual);
+        }
+
+        #battle-panel .battle-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        #battle-panel .battle-actions button {
+            background: var(--bg-card);
+            border: 1px solid var(--border-gold);
+            color: var(--text-primary);
+            padding: 6px 16px;
+            border-radius: var(--radius-card);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            flex: 1 0 auto;
+            min-width: 70px;
+        }
+        #battle-panel .battle-actions button:hover {
+            background: var(--border-gold);
+            color: var(--bg-primary);
+        }
+        #battle-panel .battle-actions button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        #battle-panel .battle-actions button.skill-btn {
+            border-color: var(--border-jade);
+            background: var(--bg-secondary);
+        }
+        #battle-panel .battle-actions button.skill-btn:hover {
+            background: var(--border-jade);
+        }
+        #battle-panel .battle-actions button.danger {
+            border-color: var(--border-crimson);
+        }
+        #battle-panel .battle-actions button.danger:hover {
+            background: var(--border-crimson);
+        }
+
+        #battle-panel .battle-result {
+            text-align: center;
+            padding: 16px;
+            font-size: 1.2rem;
+            font-family: var(--font-serif);
+        }
+        #battle-panel .battle-result.victory {
+            color: var(--text-gold);
+        }
+        #battle-panel .battle-result.defeat {
+            color: var(--text-crimson);
+        }
+
+        /* ============================================================
+               INVENTORY / EQUIPMENT / SKILLS
+            ============================================================ */
+        .item-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 8px;
+        }
+        .item-card {
+            background: var(--bg-panel);
+            border: 1px solid rgba(138, 109, 59, 0.15);
+            border-radius: var(--radius-card);
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .item-card:hover {
+            border-color: var(--border-gold);
+            background: var(--bg-card-hover);
+        }
+        .item-card .item-name {
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: var(--text-primary);
+        }
+        .item-card .item-detail {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        .item-card .item-detail .highlight {
+            color: var(--text-gold);
+        }
+        .item-card .item-rarity {
+            font-size: 0.6rem;
+            padding: 1px 8px;
+            border-radius: 10px;
+            display: inline-block;
+            margin-top: 4px;
+        }
+        .item-card .item-rarity.white {
+            background: #444;
+            color: #ccc;
+        }
+        .item-card .item-rarity.green {
+            background: #2d4a2d;
+            color: #8bc34a;
+        }
+        .item-card .item-rarity.blue {
+            background: #1d3a5a;
+            color: #64b5f6;
+        }
+        .item-card .item-rarity.purple {
+            background: #3d1d5a;
+            color: #ce93d8;
+        }
+        .item-card .item-rarity.gold {
+            background: #4d3d1a;
+            color: var(--text-gold);
+        }
+        .item-card .item-rarity.red {
+            background: #4d1a1a;
+            color: #ef5350;
+        }
+
+        .equipped-slot {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 12px;
+            background: var(--bg-panel);
+            border-radius: var(--radius-card);
+            margin-bottom: 4px;
+            border-left: 3px solid var(--border-gold);
+        }
+        .equipped-slot .slot-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            min-width: 70px;
+        }
+        .equipped-slot .slot-item {
+            font-size: 0.8rem;
+            flex: 1;
+            text-align: left;
+            padding-left: 8px;
+        }
+        .equipped-slot .slot-empty {
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            font-style: italic;
+        }
+        .equipped-slot .slot-action {
+            font-size: 0.6rem;
+            color: var(--text-spiritual);
+            cursor: pointer;
+            background: transparent;
+            border: none;
+            font-family: inherit;
+            padding: 2px 8px;
+            border-radius: var(--radius-card);
+        }
+        .equipped-slot .slot-action:hover {
+            background: rgba(106, 155, 199, 0.15);
+        }
+
+        /* ============================================================
+               MAP PANEL
+            ============================================================ */
+        .map-location {
+            background: var(--bg-panel);
+            border: 1px solid rgba(138, 109, 59, 0.2);
+            border-radius: var(--radius-card);
+            padding: 12px 16px;
+            margin-bottom: 10px;
+        }
+        .map-location .map-name {
+            font-family: var(--font-serif);
+            font-size: 1rem;
+            color: var(--text-gold);
+        }
+        .map-location .map-desc {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+        .map-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        .map-actions button {
+            background: var(--bg-card);
+            border: 1px solid var(--border-jade);
+            color: var(--text-primary);
+            padding: 6px 16px;
+            border-radius: var(--radius-card);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .map-actions button:hover {
+            background: var(--border-jade);
+        }
+        .map-actions button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .ap-display {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 8px;
+            padding: 4px 12px;
+            background: var(--bg-card);
+            border-radius: var(--radius-card);
+        }
+        .ap-display .ap-value {
+            color: var(--text-gold);
+            font-weight: 600;
+        }
+        .ap-display .ap-max {
+            color: var(--text-secondary);
+        }
+
+        /* ============================================================
+               FOLLOWER PANEL
+            ============================================================ */
+        .follower-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--bg-panel);
+            border: 1px solid rgba(138, 109, 59, 0.15);
+            border-radius: var(--radius-card);
+            padding: 10px 14px;
+            margin-bottom: 6px;
+        }
+        .follower-card .follower-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--bg-card);
+            border: 1px solid var(--border-gold);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        .follower-card .follower-info {
+            flex: 1;
+        }
+        .follower-card .follower-info .name {
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+        .follower-card .follower-info .detail {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+        }
+        .follower-card .follower-status {
+            font-size: 0.6rem;
+            padding: 2px 10px;
+            border-radius: 10px;
+        }
+        .follower-card .follower-status.active {
+            background: rgba(95, 155, 122, 0.2);
+            color: var(--text-jade);
+        }
+        .follower-card .follower-status.inactive {
+            background: rgba(181, 74, 74, 0.2);
+            color: var(--text-crimson);
+        }
+
+        /* ============================================================
+               STATS DETAIL PANEL
+            ============================================================ */
+        .stats-toggle {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+        .stats-toggle button {
+            background: var(--bg-card);
+            border: 1px solid var(--border-gold);
+            color: var(--text-secondary);
+            padding: 4px 16px;
+            border-radius: var(--radius-card);
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .stats-toggle button.active {
+            background: var(--border-gold);
+            color: var(--bg-primary);
+        }
+        .stats-toggle button:hover {
+            background: var(--border-gold);
+            color: var(--bg-primary);
+        }
+
+        .stat-detailed {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 4px 16px;
+            font-size: 0.75rem;
+        }
+        .stat-detailed .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 2px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        }
+        .stat-detailed .stat-row .label {
+            color: var(--text-muted);
+        }
+        .stat-detailed .stat-row .value {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+        .stat-detailed .stat-row .value.capped {
+            color: var(--text-gold);
+        }
+
+        /* ============================================================
+               RESPONSIVE
+            ============================================================ */
+        @media (max-width: 768px) {
+            #app {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto 1fr auto;
+                grid-template-areas:
+                    "header"
+                    "sidebar"
+                    "main"
+                    "footer";
+                max-height: none;
+                height: auto;
+                min-height: 100vh;
+                border-radius: 6px;
+            }
+
+            #sidebar {
+                flex-direction: row;
+                flex-wrap: wrap;
+                border-right: none;
+                border-bottom: 1px solid rgba(138, 109, 59, 0.2);
+                padding: 4px 8px;
+                overflow-x: auto;
+                gap: 2px;
+                min-height: 44px;
+            }
+            #sidebar .nav-btn {
+                padding: 6px 10px;
+                font-size: 0.7rem;
+                border-left: none;
+                border-bottom: 2px solid transparent;
+                border-radius: 0;
+                white-space: nowrap;
+                width: auto;
+                flex: 0 0 auto;
+            }
+            #sidebar .nav-btn.active {
+                border-left: none;
+                border-bottom-color: var(--text-gold);
+            }
+            #sidebar .nav-btn .icon {
+                font-size: 0.8rem;
+                width: 16px;
+            }
+
+            #header .game-title {
+                font-size: 0.9rem;
+            }
+            #header .player-mini-stats {
+                font-size: 0.65rem;
+                gap: 6px 12px;
+            }
+
+            #battle-panel .battle-arena {
+                grid-template-columns: 1fr;
+            }
+
+            #main {
+                padding: 8px 10px;
+            }
+
+            .item-grid {
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            }
+            .stat-grid {
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            }
+            .stat-detailed {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #header .player-mini-stats .stat-item .label {
+                display: none;
+            }
+            #header .save-controls button {
+                padding: 2px 8px;
+                font-size: 0.6rem;
+            }
+            #battle-panel .battle-actions button {
+                font-size: 0.65rem;
+                padding: 4px 10px;
+                min-width: 50px;
+            }
+            .stat-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .stat-detailed {
+                grid-template-columns: 1fr;
+            }
+            .panel-title {
+                font-size: 0.95rem;
+            }
+        }
+
+        /* ============================================================
+               UTILITY
+            ============================================================ */
+        .text-center {
+            text-align: center;
+        }
+        .text-muted {
+            color: var(--text-muted);
+        }
+        .text-gold {
+            color: var(--text-gold);
+        }
+        .text-crimson {
+            color: var(--text-crimson);
+        }
+        .text-jade {
+            color: var(--text-jade);
+        }
+        .mt-8 {
+            margin-top: 8px;
+        }
+        .mb-8 {
+            margin-bottom: 8px;
+        }
+        .flex-between {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .gap-4 {
+            gap: 4px;
+        }
+        .gap-8 {
+            gap: 8px;
+        }
+
+        /* Simple scrollable container */
+        .scroll-y {
+            overflow-y: auto;
+            max-height: 400px;
+        }
+        .scroll-y-sm {
+            overflow-y: auto;
+            max-height: 250px;
+        }
+
+        /* ============================================================
+               EVENT PANEL
+            ============================================================ */
+        .event-box {
+            background: var(--bg-panel);
+            border: 1px solid rgba(138, 109, 59, 0.25);
+            border-radius: var(--radius-card);
+            padding: 16px 20px;
+            margin-bottom: 10px;
+        }
+        .event-box .event-text {
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: var(--text-secondary);
+            font-family: var(--font-serif);
+            margin-bottom: 12px;
+        }
+        .event-box .event-choices {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .event-box .event-choices button {
+            background: var(--bg-card);
+            border: 1px solid var(--border-jade);
+            color: var(--text-primary);
+            padding: 6px 16px;
+            border-radius: var(--radius-card);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .event-box .event-choices button:hover {
+            background: var(--border-jade);
+        }
+        .event-box .event-result {
+            margin-top: 10px;
+            padding: 10px 14px;
+            background: var(--bg-card);
+            border-radius: var(--radius-card);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            border-left: 3px solid var(--text-gold);
+        }
+
+        /* ============================================================
+               TOOLTIP / HOVER
+            ============================================================ */
+        .tip {
+            position: relative;
+            cursor: help;
+        }
+        .tip:hover::after {
+            content: attr(data-tip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-panel);
+            border: 1px solid var(--border-gold);
+            padding: 4px 12px;
+            border-radius: var(--radius-card);
+            font-size: 0.6rem;
+            color: var(--text-primary);
+            white-space: nowrap;
+            z-index: 100;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ============================================================
+    APP
+    ============================================================ -->
+    <div id="app">
+
+        <!-- ============================================================
+        HEADER
+        ============================================================ -->
+        <header id="header">
+            <div class="game-title">
+                ⚔️ ยุทธภพ
+                <small>Jianghu RPG</small>
+            </div>
+            <div class="player-mini-stats" id="miniStats">
+                <!-- Rendered by JS -->
+            </div>
+            <div class="save-controls">
+                <button id="btnSave" title="บันทึกเกม">💾 บันทึก</button>
+                <button id="btnLoad" title="โหลดเกม">📂 โหลด</button>
+                <button id="btnReset" title="เริ่มเกมใหม่ (ล้างเซฟ)">🔄 ใหม่</button>
+            </div>
+        </header>
+
+        <!-- ============================================================
+        SIDEBAR
+        ============================================================ -->
+        <nav id="sidebar">
+            <button class="nav-btn active" data-panel="battle">
+                <span class="icon">⚔️</span> ต่อสู้
+            </button>
+            <button class="nav-btn" data-panel="stats">
+                <span class="icon">📊</span> สเตตัส
+            </button>
+            <button class="nav-btn" data-panel="inventory">
+                <span class="icon">🎒</span> คลัง
+            </button>
+            <button class="nav-btn" data-panel="equipment">
+                <span class="icon">🛡️</span> อุปกรณ์
+            </button>
+            <button class="nav-btn" data-panel="skills">
+                <span class="icon">📜</span> สกิล
+            </button>
+            <button class="nav-btn" data-panel="map">
+                <span class="icon">🗺️</span> แผนที่
+            </button>
+            <button class="nav-btn" data-panel="followers">
+                <span class="icon">👥</span> ผู้ติดตาม
+            </button>
+            <button class="nav-btn" data-panel="events">
+                <span class="icon">🎋</span> เหตุการณ์
+            </button>
+        </nav>
+
+        <!-- ============================================================
+        MAIN CONTENT
+        ============================================================ -->
+        <main id="main">
+
+            <!-- ============================================================
+            PANEL: BATTLE
+            ============================================================ -->
+            <section id="battle-panel" class="panel active">
+                <div class="panel-title">
+                    ⚔️ ยุทธภูมิ
+                    <span class="sub" id="battleStatus">พร้อมต่อสู้</span>
+                </div>
+
+                <div id="battleArena" class="battle-arena">
+                    <!-- Player Side -->
+                    <div class="combatant-box" id="playerCombatant">
+                        <div class="name" id="playerName">ผู้เล่น <span class="tag">Lv.1</span></div>
+                        <div class="hp-bar">
+                            <div class="fill" id="playerHpFill" style="width:100%"></div>
+                            <span class="bar-label" id="playerHpLabel">100/100</span>
+                        </div>
+                        <div class="mp-bar">
+                            <div class="fill" id="playerMpFill" style="width:100%"></div>
+                            <span class="bar-label" id="playerMpLabel">50/50</span>
+                        </div>
+                        <div style="font-size:0.65rem;color:var(--text-muted);margin-top:4px;">
+                            ⚔️ ATK <span id="playerAtk">0</span> &nbsp;|&nbsp; 🛡️ DEF <span id="playerDef">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Enemy Side -->
+                    <div class="combatant-box" id="enemyCombatant">
+                        <div class="name" id="enemyName">ศัตรู <span class="tag">Lv.1</span></div>
+                        <div class="hp-bar">
+                            <div class="fill" id="enemyHpFill" style="width:100%;background:var(--text-crimson)"></div>
+                            <span class="bar-label" id="enemyHpLabel">100/100</span>
+                        </div>
+                        <div class="mp-bar">
+                            <div class="fill" id="enemyMpFill" style="width:100%;background:var(--text-crimson)"></div>
+                            <span class="bar-label" id="enemyMpLabel">0/0</span>
+                        </div>
+                        <div style="font-size:0.65rem;color:var(--text-muted);margin-top:4px;">
+                            ⚔️ ATK <span id="enemyAtk">0</span> &nbsp;|&nbsp; 🛡️ DEF <span id="enemyDef">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Battle Log -->
+                <div class="battle-log" id="battleLog">
+                    <div class="log-entry system">— ยินดีต้อนรับสู่ยุทธภพ —</div>
+                    <div class="log-entry system">เลือกศัตรูแล้วกด "เริ่มต่อสู้"</div>
+                </div>
+
+                <!-- Battle Actions -->
+                <div class="battle-actions" id="battleActions">
+                    <button id="btnStartBattle">⚔️ เริ่มต่อสู้</button>
+                    <button id="btnAttack" disabled>💢 โจมตี</button>
+                    <button id="btnRetreat" disabled>🏃 หนี</button>
+                    <span style="flex:1;font-size:0.65rem;color:var(--text-muted);text-align:right;align-self:center;" id="turnIndicator">เทิร์น: -</span>
+                </div>
+
+                <!-- Skill Buttons (dynamic) -->
+                <div class="battle-actions" id="skillButtons" style="margin-top:4px;"></div>
+
+                <!-- Battle Result -->
+                <div id="battleResult" class="battle-result" style="display:none;"></div>
+            </section>
+
+            <!-- ============================================================
+            PANEL: STATS
+            ============================================================ -->
+            <section id="stats-panel" class="panel">
+                <div class="panel-title">
+                    📊 สเตตัสตัวละคร
+                    <span class="sub" id="statsRank">จอมยุทธ์ฝึกหัด</span>
+                </div>
+
+                <div class="stats-toggle">
+                    <button class="active" data-view="simple">📋 ง่าย</button>
+                    <button data-view="detailed">📖 ละเอียด</button>
+                </div>
+
+                <!-- Simple Stats -->
+                <div id="statsSimple" class="stat-grid">
+                    <!-- Rendered by JS -->
+                </div>
+
+                <!-- Detailed Stats -->
+                <div id="statsDetailed" style="display:none;" class="stat-detailed">
+                    <!-- Rendered by JS -->
+                </div>
+
+                <!-- Stats Points -->
+                <div class="card" style="margin-top:10px;">
+                    <div class="card-title">📌 คะแนนสถานะคงเหลือ</div>
+                    <div class="card-content flex-between">
+                        <span id="statPointsDisplay">0</span>
+                        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                            <button class="stat-alloc" data-stat="str">💪 STR</button>
+                            <button class="stat-alloc" data-stat="con">🛡️ CON</button>
+                            <button class="stat-alloc" data-stat="agi">💨 AGI</button>
+                            <button class="stat-alloc" data-stat="int">🧠 INT</button>
+                            <button class="stat-alloc" data-stat="luck">🍀 LUCK</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================================================
+            PANEL: INVENTORY
+            ============================================================ -->
+            <section id="inventory-panel" class="panel">
+                <div class="panel-title">
+                    🎒 คลังสัมภาระ
+                    <span class="sub" id="invCount">0 ชิ้น</span>
+                </div>
+                <div id="inventoryGrid" class="item-grid scroll-y-sm">
+                    <!-- Rendered by JS -->
+                </div>
+            </section>
+
+            <!-- ============================================================
+            PANEL: EQUIPMENT
+            ============================================================ -->
+            <section id="equipment-panel" class="panel">
+                <div class="panel-title">
+                    🛡️ อุปกรณ์สวมใส่
+                    <span class="sub" id="eqPower">พลัง: 0</span>
+                </div>
+
+                <div id="equippedSlots">
+                    <!-- Rendered by JS -->
+                </div>
+
+                <div style="margin-top:12px;font-size:0.7rem;color:var(--text-muted);">
+                    💡 คลิกไอเทมในคลังเพื่อสวมใส่ • คลิกอุปกรณ์ที่สวมใส่เพื่อถอด
+                </div>
+            </section>
+
+            <!-- ============================================================
+            PANEL: SKILLS
+            ============================================================ -->
+            <section id="skills-panel" class="panel">
+                <div class="panel-title">
+                    📜 สกิล
+                    <span class="sub" id="skillCount">0 สกิล</span>
+                </div>
+
+                <div style="display:flex;gap:8px;margin-bottom:8px;">
+                    <button class="skill-tab active" data-type="active">⚡ Active</button>
+                    <button class="skill-tab" data-type="passive">🌀 Passive</button>
+                </div>
+
+                <div id="skillsGrid" class="item-grid scroll-y-sm">
+                    <!-- Rendered by JS -->
+                </div>
+            </section>
+
+            <!-- ============================================================
+            PANEL: MAP
+            ============================================================ -->
+            <section id="map-panel" class="panel">
+                <div class="panel-title">
+                    🗺️ แผนที่
+                    <span class="sub" id="mapLevel">ระดับ 1</span>
+                </div>
+
+                <div id="mapDisplay" class="map-location">
+                    <div class="map-name" id="mapName">หมู่บ้านเซียวเหยา</div>
+                    <div class="map-desc" id="mapDesc">จุดเริ่มต้นของนักเดินทาง ณ ยุทธภพ</div>
+                    <div class="map-actions" id="mapActions">
+                        <button data-action="explore">🚶 ลาดตระเวน</button>
+                        <button data-action="train">🧘 ฝึกฝน</button>
+                        <button data-action="search">🔍 ค้นหา</button>
+                        <button data-action="boss" disabled>👹 บอส</button>
+                    </div>
+                    <div class="ap-display">
+                        ⚡ AP: <span class="ap-value" id="apValue">20</span> / <span class="ap-max" id="apMax">20</span>
+                        <span style="flex:1;text-align:right;font-size:0.6rem;" id="apRegenInfo">รีเจน 1 ทุก 5 นาที</span>
+                    </div>
+                </div>
+
+                <div id="mapEnemies" style="font-size:0.75rem;color:var(--text-muted);">
+                    <!-- Rendered by JS -->
+                </div>
+            </section>
+
+            <!-- ============================================================
+            PANEL: FOLLOWERS
+            ============================================================ -->
+            <section id="followers-panel" class="panel">
+                <div class="panel-title">
+                    👥 ผู้ติดตาม
+                    <span class="sub" id="followerCount">0 คน</span>
+                </div>
+                <div id="followersList">
+                    <!-- Rendered by JS -->
+                </div>
+            </section>
+
+            <!-- ============================================================
+            PANEL: EVENTS
+            ============================================================ -->
+            <section id="events-panel" class="panel">
+                <div class="panel-title">
+                    🎋 เหตุการณ์
+                    <span class="sub">จงเลือกอย่างชาญฉลาด</span>
+                </div>
+                <div id="eventDisplay" class="event-box">
+                    <div class="event-text" id="eventText">ไม่มีเหตุการณ์ในขณะนี้</div>
+                    <div class="event-choices" id="eventChoices"></div>
+                    <div class="event-result" id="eventResult" style="display:none;"></div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- ============================================================
+        FOOTER
+        ============================================================ -->
+        <footer id="footer">
+            <span class="version">⚔️ Jianghu RPG v1.0</span>
+            <span class="status" id="footerStatus">🟢 พร้อมใช้งาน</span>
+        </footer>
+
+    </div>
+
+    <!-- ============================================================
+    JAVASCRIPT — UI CONTROLLER (เชื่อมต่อ Exploration + Item Generator)
+    ============================================================ -->
+    <script type="module">
+        // ============================================================
+        // IMPORTS
+        // ============================================================
+        import { PlayerModule } from './js/player.js';
+        import { InventoryModule } from './js/inventory.js';
+        import { EquipmentModule } from './js/equipment edit.js';
+        import { SaveModule } from './js/save.js';
+        import { SkillDatabase } from './js/skill database.js';
+        import { EnemyDatabase } from './js/enemy.js';
+        import { BossDatabase } from './js/boss database.js';
+        import miniBossDatabase from './js/mini_boss.js';
+        import { BattleModule } from './js/battle.js';
+        import { ExplorationModule } from './js/exploration.js';
+        import { ItemGeneratorModule } from './js/item_generator.js';
+
+        // ============================================================
+        // STATE
+        // ============================================================
+        let player = null;
+        let currentPanel = 'battle';
+        let battleState = null;
+        let isInBattle = false;
+        let battleResolve = null;
+
+        // UI References
+        const $ = (sel) => document.querySelector(sel);
+        const $$ = (sel) => document.querySelectorAll(sel);
+
+        // ============================================================
+        // INIT
+        // ============================================================
+        function init() {
+            // Try load save
+            const saved = SaveModule.loadGame();
+            if (saved) {
+                player = saved;
+                // Ensure player has all required fields
+                if (!player.skills) player.skills = { active: [], passive: [] };
+                if (!player.followers) player.followers = [];
+                if (!player.unlocked_zones) player.unlocked_zones = ['MAP-001'];
+                if (!player.current_zone) player.current_zone = 'MAP-001';
+                if (!player.action_points && player.action_points !== 0) player.action_points = 20;
+                if (!player.last_ap_regen) player.last_ap_regen = Date.now();
+                if (!player._boss_timestamps) player._boss_timestamps = {};
+                if (!player.defeated_bosses) player.defeated_bosses = [];
+                if (!player.defeated_mini_bosses) player.defeated_mini_bosses = [];
+
+                // Recalculate stats with equipment
+                if (EquipmentModule && EquipmentModule.recalculateEquipmentStats) {
+                    EquipmentModule.recalculateEquipmentStats(player);
+                }
+                updateUI();
+                addLog('ระบบ', 'โหลดข้อมูลเซฟสำเร็จ', 'system');
+            } else {
+                // Create new player
+                player = PlayerModule.createNewPlayer('จอมยุทธ์พเนจร');
+                // Give some starter gold
+                player.gold = 100;
+                // Give starter skills (id 1 and 11)
+                if (player.skills) {
+                    const starterSkills = [1, 11];
+                    for (const sid of starterSkills) {
+                        const skill = SkillDatabase.find(s => s.id === sid);
+                        if (skill) {
+                            if (skill.type === 'Active' && player.skills.active.length < player.skills.active_slots) {
+                                player.skills.active.push(sid);
+                            } else if (skill.type === 'Passive' && player.skills.passive.length < player.skills.passive_slots) {
+                                player.skills.passive.push(sid);
+                            }
+                        }
+                    }
+                }
+                // AP
+                player.action_points = 20;
+                player.last_ap_regen = Date.now();
+                player._boss_timestamps = {};
+                player.defeated_bosses = [];
+                player.defeated_mini_bosses = [];
+                // Recalculate stats
+                if (EquipmentModule && EquipmentModule.recalculateEquipmentStats) {
+                    EquipmentModule.recalculateEquipmentStats(player);
+                }
+                SaveModule.saveGame(player);
+                addLog('ระบบ', 'เริ่มเกมใหม่ ยินดีต้อนรับสู่ยุทธภพ!', 'system');
+            }
+
+            // Setup UI
+            setupNavigation();
+            setupBattle();
+            setupStats();
+            setupInventory();
+            setupEquipment();
+            setupSkills();
+            setupMap();
+            setupFollowers();
+            setupEvents();
+            setupSaveButtons();
+
+            // Initial render
+            updateUI();
+            renderBattleUI();
+            renderAP();
+            addLog('ระบบ', 'พร้อมใช้งานแล้ว', 'system');
+        }
+
+        // ============================================================
+        // NAVIGATION
+        // ============================================================
+        function setupNavigation() {
+            $$('#sidebar .nav-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const panelId = btn.dataset.panel;
+                    showPanel(panelId);
+                });
+            });
+        }
+
+        function showPanel(panelId) {
+            currentPanel = panelId;
+            // Update nav
+            $$('#sidebar .nav-btn').forEach(b => b.classList.remove('active'));
+            const navBtn = document.querySelector(`#sidebar .nav-btn[data-panel="${panelId}"]`);
+            if (navBtn) navBtn.classList.add('active');
+
+            // Update panels
+            $$('.panel').forEach(p => p.classList.remove('active'));
+            const panel = document.getElementById(`${panelId}-panel`);
+            if (panel) panel.classList.add('active');
+
+            // Refresh content
+            switch (panelId) {
+                case 'battle':
+                    renderBattleUI();
+                    break;
+                case 'stats':
+                    renderStats();
+                    break;
+                case 'inventory':
+                    renderInventory();
+                    break;
+                case 'equipment':
+                    renderEquipment();
+                    break;
+                case 'skills':
+                    renderSkills();
+                    break;
+                case 'map':
+                    renderMap();
+                    renderAP();
+                    break;
+                case 'followers':
+                    renderFollowers();
+                    break;
+                case 'events':
+                    renderEvents();
+                    break;
+            }
+        }
+
+        // ============================================================
+        // UI UPDATE
+        // ============================================================
+        function updateUI() {
+            if (!player) return;
+            updateMiniStats();
+            updateFooterStatus();
+            renderAP();
+            // Update other panels if visible
+            const panelId = currentPanel;
+            switch (panelId) {
+                case 'stats':
+                    renderStats();
+                    break;
+                case 'inventory':
+                    renderInventory();
+                    break;
+                case 'equipment':
+                    renderEquipment();
+                    break;
+                case 'skills':
+                    renderSkills();
+                    break;
+                case 'map':
+                    renderMap();
+                    break;
+                case 'followers':
+                    renderFollowers();
+                    break;
+                case 'events':
+                    renderEvents();
+                    break;
+                case 'battle':
+                default:
+                    renderBattleUI();
+                    break;
+            }
+        }
+
+        function updateMiniStats() {
+            const el = document.getElementById('miniStats');
+            if (!player) return;
+            const cs = player.combat_stats || {};
+            const st = player.stats || {};
+            el.innerHTML = `
+                <span class="stat-item">
+                    <span class="label">👤</span>
+                    <span class="value">Lv.${player.level}</span>
+                </span>
+                <span class="stat-item">
+                    <span class="label">❤️</span>
+                    <span class="value hp">${Math.floor(cs.hp||0)}/${cs.hp_max||0}</span>
+                </span>
+                <span class="stat-item">
+                    <span class="label">💎</span>
+                    <span class="value mp">${Math.floor(cs.mp||0)}/${cs.mp_max||0}</span>
+                </span>
+                <span class="stat-item">
+                    <span class="label">⭐</span>
+                    <span class="value">${player.exp||0}/${player.exp_required||100}</span>
+                </span>
+                <span class="stat-item">
+                    <span class="label">💰</span>
+                    <span class="value gold">${player.gold||0}</span>
+                </span>
+                <span class="stat-item" style="font-size:0.6rem;color:var(--text-muted);">
+                    ${player.rank||'จอมยุทธ์ฝึกหัด'}
+                </span>
+            `;
+        }
+
+        function updateFooterStatus() {
+            const el = document.getElementById('footerStatus');
+            if (!player) return;
+            const cs = player.combat_stats || {};
+            const hpPct = cs.hp_max > 0 ? Math.round((cs.hp/cs.hp_max)*100) : 0;
+            const status = hpPct < 20 ? '🔴 ใกล้ตาย' :
+                           hpPct < 50 ? '🟡 บาดเจ็บ' :
+                           '🟢 สมบูรณ์';
+            el.textContent = `❤️ ${hpPct}% • ${status} • ${player.current_zone||'MAP-001'}`;
+        }
+
+        function addLog(speaker, message, type = 'normal') {
+            const log = document.getElementById('battleLog');
+            if (!log) return;
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            const cls = type === 'system' ? 'system' :
+                       type === 'damage' ? 'damage' :
+                       type === 'heal' ? 'heal' : '';
+            entry.innerHTML = `<span class="${cls}">${speaker}:</span> ${message}`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        // ============================================================
+        // SAVE / LOAD
+        // ============================================================
+        function setupSaveButtons() {
+            document.getElementById('btnSave').addEventListener('click', () => {
+                if (SaveModule.saveGame(player)) {
+                    addLog('ระบบ', 'บันทึกเกมสำเร็จ!', 'system');
+                } else {
+                    addLog('ระบบ', '❌ บันทึกเกมล้มเหลว', 'system');
+                }
+            });
+
+            document.getElementById('btnLoad').addEventListener('click', () => {
+                const saved = SaveModule.loadGame();
+                if (saved) {
+                    player = saved;
+                    if (!player.skills) player.skills = { active: [], passive: [] };
+                    if (!player.followers) player.followers = [];
+                    if (!player.unlocked_zones) player.unlocked_zones = ['MAP-001'];
+                    if (!player.current_zone) player.current_zone = 'MAP-001';
+                    if (!player.action_points && player.action_points !== 0) player.action_points = 20;
+                    if (!player.last_ap_regen) player.last_ap_regen = Date.now();
+                    if (!player._boss_timestamps) player._boss_timestamps = {};
+                    if (!player.defeated_bosses) player.defeated_bosses = [];
+                    if (!player.defeated_mini_bosses) player.defeated_mini_bosses = [];
+                    if (EquipmentModule && EquipmentModule.recalculateEquipmentStats) {
+                        EquipmentModule.recalculateEquipmentStats(player);
+                    }
+                    updateUI();
+                    addLog('ระบบ', 'โหลดเกมสำเร็จ!', 'system');
+                } else {
+                    addLog('ระบบ', '❌ ไม่พบข้อมูลเซฟ', 'system');
+                }
+            });
+
+            document.getElementById('btnReset').addEventListener('click', () => {
+                if (confirm('⚠️ เริ่มเกมใหม่จะล้างข้อมูลเซฟทั้งหมด ดำเนินการต่อ?')) {
+                    SaveModule.deleteSave();
+                    location.reload();
+                }
+            });
+        }
+
+        // ============================================================
+        // AP DISPLAY
+        // ============================================================
+        function renderAP() {
+            const ap = ExplorationModule.getAP(player);
+            document.getElementById('apValue').textContent = Math.floor(ap);
+            document.getElementById('apMax').textContent = ExplorationModule.CONSTANTS.MAX_AP;
+        }
+
+        // ============================================================
+        // BATTLE UI — INTERACTIVE VERSION
+        // ============================================================
+        function setupBattle() {
+            document.getElementById('btnStartBattle').addEventListener('click', startBattle);
+            document.getElementById('btnAttack').addEventListener('click', () => {
+                if (isInBattle && battleState && battleResolve) {
+                    battleResolve({ type: 'attack' });
+                }
+            });
+            document.getElementById('btnRetreat').addEventListener('click', () => {
+                if (isInBattle && battleState && battleResolve) {
+                    battleResolve({ type: 'retreat' });
+                }
+            });
+        }
+
+        function renderBattleUI() {
+            if (!player) return;
+            const cs = player.combat_stats || {};
+            const st = player.stats || {};
+
+            // Player stats
+            document.getElementById('playerName').textContent =
+                `ผู้เล่น ${player.name||''} `;
+            document.getElementById('playerName').innerHTML +=
+                `<span class="tag">Lv.${player.level}</span>`;
+
+            document.getElementById('playerHpFill').style.width =
+                cs.hp_max > 0 ? `${(cs.hp/cs.hp_max)*100}%` : '0%';
+            document.getElementById('playerHpLabel').textContent =
+                `${Math.floor(cs.hp||0)}/${cs.hp_max||0}`;
+
+            document.getElementById('playerMpFill').style.width =
+                cs.mp_max > 0 ? `${(cs.mp/cs.mp_max)*100}%` : '0%';
+            document.getElementById('playerMpLabel').textContent =
+                `${Math.floor(cs.mp||0)}/${cs.mp_max||0}`;
+
+            document.getElementById('playerAtk').textContent = Math.floor(cs.atk||0);
+            document.getElementById('playerDef').textContent = Math.floor(cs.def||0);
+
+            // Enemy stats (if battle is active)
+            if (battleState && battleState.enemies && battleState.enemies.length > 0) {
+                const enemy = battleState.enemies[0];
+                document.getElementById('enemyName').textContent =
+                    `${enemy.name||'ศัตรู'} `;
+                document.getElementById('enemyName').innerHTML +=
+                    `<span class="tag">Lv.${enemy.level||1}</span>`;
+
+                document.getElementById('enemyHpFill').style.width =
+                    enemy.hp_max > 0 ? `${(enemy.hp/enemy.hp_max)*100}%` : '0%';
+                document.getElementById('enemyHpLabel').textContent =
+                    `${Math.floor(enemy.hp||0)}/${enemy.hp_max||0}`;
+
+                document.getElementById('enemyMpFill').style.width =
+                    enemy.mp_max > 0 ? `${(enemy.mp/enemy.mp_max)*100}%` : '0%';
+                document.getElementById('enemyMpLabel').textContent =
+                    `${Math.floor(enemy.mp||0)}/${enemy.mp_max||0}`;
+
+                document.getElementById('enemyAtk').textContent = Math.floor(enemy.atk||0);
+                document.getElementById('enemyDef').textContent = Math.floor(enemy.def||0);
+
+                document.getElementById('btnStartBattle').disabled = true;
+                document.getElementById('btnAttack').disabled = !isInBattle;
+                document.getElementById('btnRetreat').disabled = !isInBattle;
+                document.getElementById('battleStatus').textContent =
+                    isInBattle ? `⚔️ ต่อสู้ (เทิร์น ${battleState.turn||0})` : '⚔️ ต่อสู้';
+
+                renderBattleSkills();
+
+            } else {
+                document.getElementById('enemyName').textContent = 'ศัตรู';
+                document.getElementById('enemyName').innerHTML += `<span class="tag">-</span>`;
+                document.getElementById('enemyHpFill').style.width = '0%';
+                document.getElementById('enemyHpLabel').textContent = '0/0';
+                document.getElementById('enemyMpFill').style.width = '0%';
+                document.getElementById('enemyMpLabel').textContent = '0/0';
+                document.getElementById('enemyAtk').textContent = '0';
+                document.getElementById('enemyDef').textContent = '0';
+
+                document.getElementById('btnStartBattle').disabled = false;
+                document.getElementById('btnAttack').disabled = true;
+                document.getElementById('btnRetreat').disabled = true;
+                document.getElementById('battleStatus').textContent = 'พร้อมต่อสู้';
+                document.getElementById('skillButtons').innerHTML = '';
+                document.getElementById('battleResult').style.display = 'none';
+            }
+
+            document.getElementById('turnIndicator').textContent =
+                isInBattle ? `⚔️ เทิร์น ${battleState?.turn||0}` : '⏳ รอเริ่ม';
+        }
+
+        function renderBattleSkills() {
+            const container = document.getElementById('skillButtons');
+            container.innerHTML = '';
+            if (!player || !player.skills || !player.skills.active) return;
+
+            for (const sid of player.skills.active) {
+                const skill = SkillDatabase.find(s => s.id === sid);
+                if (!skill) continue;
+                const meta = BattleModule.parseSkillMeta(skill.effect);
+                const btn = document.createElement('button');
+                btn.className = 'skill-btn';
+                btn.textContent = `${skill.name} (${meta.mpCost||0}MP)`;
+                btn.title = skill.effect;
+                const hasEnoughMP = (player.combat_stats?.mp||0) >= (meta.mpCost||0);
+                btn.disabled = !isInBattle || !hasEnoughMP;
+                btn.addEventListener('click', () => {
+                    if (isInBattle && battleState && battleResolve) {
+                        battleResolve({ type: 'skill', skill: skill });
+                    }
+                });
+                container.appendChild(btn);
+            }
+        }
+
+        // ============================================================
+        // START BATTLE (Async/await) — ใช้ Exploration + Item Generator
+        // ============================================================
+        async function startBattle(enemyData = null, enemyType = 'normal') {
+            if (isInBattle) return;
+            if (!player) return;
+
+            let enemy = enemyData;
+            let enemyTypeFinal = enemyType;
+
+            // ถ้าไม่มี enemyData ที่ส่งมา ให้สุ่มจากโซนปัจจุบัน
+            if (!enemy) {
+                const zoneId = player.current_zone || 'MAP-001';
+                const enemies = ExplorationModule.getEnemiesInZone(zoneId);
+                if (enemies.length === 0) {
+                    addLog('ระบบ', '❌ ไม่พบศัตรูในโซนนี้', 'system');
+                    return;
+                }
+                // กรองศัตรูที่เหมาะกับ Level
+                const filtered = enemies.filter(e => {
+                    const lvl = parseInt(e.เลเวล) || 1;
+                    return lvl >= player.level - 3 && lvl <= player.level + 5;
+                });
+                const pool = filtered.length > 0 ? filtered : enemies;
+                enemy = pool[Math.floor(Math.random() * pool.length)];
+                enemyTypeFinal = enemy["ประเภท"] || "Normal";
+            }
+
+            if (!enemy) {
+                addLog('ระบบ', '❌ ไม่พบศัตรูที่เหมาะสม', 'system');
+                return;
+            }
+
+            const enemyId = enemy["Enemy ID"] || enemy.id || 'unknown';
+            const enemyName = enemy["ชื่อ"] || enemy.name || 'ศัตรู';
+            const enemyLevel = parseInt(enemy.เลเวล) || 1;
+
+            addLog('ระบบ', `⚔️ เริ่มต่อสู้กับ ${enemyName} (Lv.${enemyLevel})!`, 'system');
+
+            // สร้าง Combatants ด้วย BattleModule
+            const playerCombatant = BattleModule.createCombatant('player', player);
+            const followers = (player.followers || [])
+                .filter(f => f.is_active !== false)
+                .map(f => BattleModule.createCombatant('follower', f));
+
+            // ใช้สร้าง enemy combatant ตามประเภท
+            let enemyCombatant;
+            if (enemyTypeFinal === 'area_boss' || enemyTypeFinal === 'mini_boss') {
+                enemyCombatant = BattleModule.createCombatant(
+                    enemyTypeFinal === 'area_boss' ? 'boss' : 'mini_boss',
+                    enemy,
+                    {
+                        combatStyle: enemy.combatStyle || enemy.style || 'Melee',
+                        immuneToKillChance: true,
+                        specialPhase: enemy.specialPhase || null,
+                        goldReward: enemy.goldReward || null,
+                        uniqueDrops: enemy.uniqueDrops || [],
+                    }
+                );
+            } else {
+                enemyCombatant = BattleModule.createCombatant('enemy', enemy, {
+                    combatStyle: enemy.combatStyle || 'Melee',
+                    dropTableId: enemy["Drop Table"] || null,
+                });
+            }
+
+            const playerSide = [playerCombatant, ...followers];
+            const enemySide = [enemyCombatant];
+            const allCombatants = [...playerSide, ...enemySide];
+            allCombatants.sort((a, b) => {
+                if (a.agi === b.agi) return a.isPlayer ? -1 : 1;
+                return b.agi - a.agi;
+            });
+
+            battleState = {
+                player: playerCombatant,
+                followers: followers,
+                enemies: enemySide,
+                allCombatants: allCombatants,
+                turnOrder: allCombatants.map(c => c.id),
+                turnIndex: 0,
+                logs: [],
+                state: 'ongoing',
+                turn: 0,
+                rewards: { exp: 0, gold: 0, drops: [] },
+                playerRef: player,
+                enemySource: enemy,
+                enemyType: enemyTypeFinal,
+            };
+
+            isInBattle = true;
+            battleResolve = null;
+            renderBattleUI();
+
+            // Main battle loop
+            let maxTurns = 100;
+            while (battleState.state === 'ongoing' && maxTurns > 0) {
+                battleState.turn += 1;
+                addLog('⚔️', `--- เทิร์นที่ ${battleState.turn} ---`, 'system');
+
+                // Reduce cooldowns
+                for (const c of battleState.allCombatants) {
+                    for (const key in c.cooldowns) {
+                        if (c.cooldowns[key] > 0) c.cooldowns[key] -= 1;
+                    }
+                }
+
+                const aliveOrder = battleState.turnOrder
+                    .map(id => battleState.allCombatants.find(c => c.id === id))
+                    .filter(c => c && c.isAlive);
+
+                if (aliveOrder.length === 0) {
+                    battleState.state = 'defeat';
+                    break;
+                }
+
+                for (const combatant of aliveOrder) {
+                    if (battleState.state !== 'ongoing') break;
+                    if (!combatant.isAlive) continue;
+
+                    const isPlayerSide = combatant.isPlayer;
+                    let defenders;
+                    if (isPlayerSide) {
+                        defenders = battleState.enemies.filter(e => e.isAlive);
+                    } else {
+                        defenders = [battleState.player, ...battleState.followers].filter(e => e.isAlive);
+                    }
+
+                    if (defenders.length === 0) {
+                        battleState.state = isPlayerSide ? 'victory' : 'defeat';
+                        break;
+                    }
+
+                    const target = defenders[0];
+
+                    // Player turn
+                    if (combatant.isPlayer && combatant.type === 'player') {
+                        document.getElementById('btnAttack').disabled = false;
+                        document.getElementById('btnRetreat').disabled = false;
+                        renderBattleSkills();
+
+                        const action = await new Promise(resolve => {
+                            battleResolve = resolve;
+                        });
+
+                        battleResolve = null;
+                        document.getElementById('btnAttack').disabled = true;
+                        document.getElementById('btnRetreat').disabled = true;
+
+                        if (action.type === 'retreat') {
+                            battleState.state = 'defeat';
+                            addLog('ระบบ', '🏃 หนีสำเร็จ!', 'system');
+                            break;
+                        } else if (action.type === 'attack') {
+                            BattleModule.executeAutoAttack(battleState, combatant, target, '');
+                        } else if (action.type === 'skill') {
+                            const skill = action.skill;
+                            if (skill) {
+                                const success = BattleModule.executeSkill(battleState, combatant, target, skill, '');
+                                if (!success) {
+                                    BattleModule.executeAutoAttack(battleState, combatant, target, '');
+                                }
+                            } else {
+                                BattleModule.executeAutoAttack(battleState, combatant, target, '');
+                            }
+                        }
+
+                        renderBattleUI();
+                        updateUI();
+
+                        while (battleState.logs.length > 0) {
+                            const logEntry = battleState.logs.shift();
+                            addLog('⚔️', logEntry, 'normal');
+                        }
+                        continue;
+                    }
+
+                    // Follower AI
+                    if (combatant.isPlayer && combatant.type === 'follower') {
+                        const availableSkills = (combatant.skills.active || []).filter(skill => {
+                            if (!skill) return false;
+                            const cdKey = skill.id;
+                            const cooldown = combatant.cooldowns[cdKey] || 0;
+                            if (cooldown > 0) return false;
+                            const meta = BattleModule.parseSkillMeta(skill.effect);
+                            if (combatant.mp < meta.mpCost) return false;
+                            return true;
+                        });
+
+                        if (availableSkills.length > 0 && Math.random() < 0.2) {
+                            const skill = availableSkills[Math.floor(Math.random() * availableSkills.length)];
+                            BattleModule.executeSkill(battleState, combatant, target, skill, '[Follower] ');
+                        } else {
+                            BattleModule.executeAutoAttack(battleState, combatant, target, '[Follower] ');
+                        }
+                        continue;
+                    }
+
+                    // Enemy AI
+                    if (!combatant.isPlayer) {
+                        const action = enemyAI(battleState, combatant, defenders);
+                        if (action) {
+                            if (action.type === 'attack') {
+                                BattleModule.executeAutoAttack(battleState, combatant, action.target, '[ศัตรู] ');
+                            } else if (action.type === 'skill') {
+                                BattleModule.executeSkill(battleState, combatant, action.target, action.skill, '[ศัตรู] ');
+                            }
+                        }
+                        continue;
+                    }
+                }
+
+                // Boss Phase 2
+                for (const enemy of battleState.enemies) {
+                    if (enemy.isBoss && enemy.specialPhase && !enemy.phaseTriggered) {
+                        if (enemy.hp / enemy.hp_max < 0.5) {
+                            enemy.phaseTriggered = true;
+                            addLog('⚠️', `${enemy.name} เข้าสู่ Phase 2! เพิ่มพลังโจมตีและป้องกัน!`, 'system');
+                            enemy.atk = Math.floor(enemy.atk * 1.5);
+                            enemy.def = Math.floor(enemy.def * 1.3);
+                        }
+                    }
+                }
+
+                const playerAlive = battleState.player.isAlive;
+                const enemiesAlive = battleState.enemies.some(e => e.isAlive);
+
+                if (!playerAlive) {
+                    battleState.state = 'defeat';
+                    battleState.player.hp = 1;
+                    addLog('💀', `${battleState.player.name} ถูกสังหาร! แพ้!`, 'system');
+                } else if (!enemiesAlive) {
+                    battleState.state = 'victory';
+                    addLog('🎉', 'ชนะ! ศัตรูทั้งหมดถูกกำจัด!', 'system');
+                }
+
+                renderBattleUI();
+                updateUI();
+
+                if (battleState.state !== 'ongoing') break;
+                maxTurns--;
+            }
+
+            isInBattle = false;
+            document.getElementById('btnAttack').disabled = true;
+            document.getElementById('btnRetreat').disabled = true;
+            document.getElementById('skillButtons').innerHTML = '';
+
+            // Process rewards
+            if (battleState.state === 'victory') {
+                // คำนวณ EXP (ใช้ BattleModule)
+                const exp = BattleModule.calculateExpReward(enemy, enemyTypeFinal);
+                // คำนวณ Gold (ใช้ BattleModule)
+                const gold = BattleModule.calculateGoldReward(enemy, enemyTypeFinal, player);
+                // Drops — สร้างไอเทมจาก DropTable โดยใช้ ItemGenerator
+                const drops = processDropsWithItemGen(enemy, enemyTypeFinal, player, enemyLevel);
+
+                battleState.rewards.exp = exp;
+                battleState.rewards.gold = gold;
+                battleState.rewards.drops = drops;
+
+                // Add EXP
+                try {
+                    PlayerModule.addExp(player, exp);
+                } catch (e) {
+                    addLog('ระบบ', `⚠️ Error adding EXP: ${e.message}`, 'system');
+                }
+
+                // Add Gold
+                try {
+                    PlayerModule.updateGold(player, gold);
+                } catch (e) {
+                    addLog('ระบบ', `⚠️ Error adding Gold: ${e.message}`, 'system');
+                }
+
+                // Add Drops (ไอเทมจริง)
+                for (const drop of drops) {
+                    try {
+                        // drop คือ Item Object ที่สร้างจาก ItemGenerator
+                        InventoryModule.addItem(player, drop.id || drop.name || 'unknown_item', 1, { stackable: false });
+                        // เก็บ itemData ไว้ใน inventory ด้วย? (เราจะเก็บไว้ใน player.inventory ผ่าน addItem)
+                        // แต่ addItem รับแค่ itemId, งั้นเราต้องเก็บ itemData ไว้ที่อื่น หรือปรับ Inventory ให้เก็บ full item
+                        // แก้ไข: เราเพิ่ม itemData ลงใน inventory entry
+                        // เพื่อความง่าย, เราจะเก็บ itemData ไว้ใน player.inventory โดยตรง
+                        // เนื่องจาก InventoryModule.addItem รับแค่ itemId, เราจะปรับโดยใช้ push ตรง
+                        const entry = {
+                            instanceId: 'inv_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+                            itemId: drop.id || drop.name,
+                            itemData: drop,
+                            quantity: 1,
+                        };
+                        player.inventory.push(entry);
+                    } catch (e) {
+                        addLog('ระบบ', `⚠️ Error adding drop: ${e.message}`, 'system');
+                    }
+                }
+
+                // บันทึกการปราบบอส (ถ้าเป็นบอส)
+                if (enemyTypeFinal === 'area_boss' || enemyTypeFinal === 'mini_boss') {
+                    const bossId = enemy.id || enemy.bossId || enemyId;
+                    ExplorationModule.recordBossDefeat(player, bossId, enemyTypeFinal);
+                }
+
+                const resultEl = document.getElementById('battleResult');
+                resultEl.style.display = 'block';
+                resultEl.className = 'battle-result victory';
+                resultEl.innerHTML = `🎉 ชนะ! ได้รับ EXP ${exp} | Gold ${gold} | ไอเทม ${drops.length} ชิ้น`;
+                document.getElementById('battleStatus').textContent = '🏆 ชนะ!';
+
+                // ฟื้น HP/MP เล็กน้อย
+                const regen = 0.2;
+                player.combat_stats.hp = Math.min(player.combat_stats.hp_max, player.combat_stats.hp + Math.floor(player.combat_stats.hp_max * regen));
+                player.combat_stats.mp = Math.min(player.combat_stats.mp_max, player.combat_stats.mp + Math.floor(player.combat_stats.mp_max * regen));
+
+            } else if (battleState.state === 'defeat') {
+                player.combat_stats.hp = 1;
+                // Teleport home
+                ExplorationModule.teleportHome(player);
+                const resultEl = document.getElementById('battleResult');
+                resultEl.style.display = 'block';
+                resultEl.className = 'battle-result defeat';
+                resultEl.textContent = '💀 แพ้! ฟื้นฟู HP เหลือ 1 และกลับบ้าน';
+                document.getElementById('battleStatus').textContent = '💀 แพ้';
+                addLog('ระบบ', `🏠 เทเลพอร์ตกลับ ${player.current_zone}`, 'system');
+            }
+
+            SaveModule.saveGame(player);
+            updateUI();
+            renderBattleUI();
+            renderAP();
+
+            battleState = null;
+            battleResolve = null;
+            document.getElementById('btnStartBattle').disabled = false;
+        }
+
+        // ============================================================
+        // PROCESS DROPS WITH ITEM GENERATOR
+        // ============================================================
+        function processDropsWithItemGen(enemy, enemyType, player, enemyLevel) {
+            const drops = [];
+
+            // Unique drops for Bosses
+            if (enemy.uniqueDrops && enemy.uniqueDrops.length > 0) {
+                const dropCount = Math.min(enemy.uniqueDrops.length, Math.floor(Math.random() * 2) + 1);
+                const shuffled = [...enemy.uniqueDrops].sort(() => Math.random() - 0.5);
+                for (let i = 0; i < dropCount; i++) {
+                    if (shuffled[i]) {
+                        // สร้างไอเทม random (ไม่ต้องใช้ iLv เฉพาะ)
+                        const ilvl = Math.min(enemyLevel + randomInRange(-2, 3), 90);
+                        const rarityWeights = enemyType === 'area_boss' ? { white: 0, green: 0, blue: 5, purple: 30, gold: 50, red: 15 } :
+                                               enemyType === 'mini_boss' ? { white: 0, green: 10, blue: 40, purple: 35, gold: 14, red: 1 } :
+                                               { white: 10, green: 30, blue: 35, purple: 20, gold: 5, red: 0 };
+                        const item = ItemGeneratorModule.generateItemFromDrop(
+                            'random',
+                            ilvl,
+                            rarityWeights,
+                            player.stats?.luck || 0
+                        );
+                        if (item) {
+                            // ตั้งชื่อ unique drop
+                            item.name = shuffled[i];
+                            drops.push(item);
+                        }
+                    }
+                }
+                return drops;
+            }
+
+            // Normal drops from DropTable
+            const dropTableId = enemy["Drop Table"];
+            if (!dropTableId) return drops;
+
+            const dropTable = DropTable.find(dt => dt.id === dropTableId);
+            if (!dropTable) return drops;
+
+            // Equipment Drop
+            const luck = player.stats?.luck || 0;
+            const dropChance = dropTable.equipmentDropChance * (1 + luck * 0.002);
+            if (Math.random() * 100 <= dropChance) {
+                // Roll Rarity
+                const weights = dropTable.rarityWeights;
+                const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);
+                let roll = Math.random() * totalWeight;
+                let selectedRarity = 'white';
+                for (const [rarity, weight] of Object.entries(weights)) {
+                    roll -= weight;
+                    if (roll <= 0) {
+                        selectedRarity = rarity;
+                        break;
+                    }
+                }
+
+                // ใช้ iLv = enemyLevel (ปรับ +/- สุ่ม)
+                const ilvl = Math.min(enemyLevel + randomInRange(-2, 3), 90);
+                const types = ['weapon', 'armor', 'accessory'];
+                const type = types[Math.floor(Math.random() * types.length)];
+
+                const item = ItemGeneratorModule.generateItem(selectedRarity, ilvl, type, luck);
+                if (item) drops.push(item);
+            }
+
+            // Materials
+            if (dropTable.materialDrops) {
+                for (const mat of dropTable.materialDrops) {
+                    if (Math.random() * 100 <= mat.chance) {
+                        // สร้างเป็น material item (สมมติเป็นไอเทมธรรมดา)
+                        const matItem = ItemGeneratorModule.generateItem('white', enemyLevel, 'accessory', luck);
+                        if (matItem) {
+                            matItem.name = mat.name;
+                            matItem.type = 'material';
+                            drops.push(matItem);
+                        }
+                    }
+                }
+            }
+
+            // Consumables
+            if (dropTable.consumables) {
+                for (const con of dropTable.consumables) {
+                    if (Math.random() * 100 <= con.chance) {
+                        const conItem = ItemGeneratorModule.generateItem('white', enemyLevel, 'accessory', luck);
+                        if (conItem) {
+                            conItem.name = con.name;
+                            conItem.type = 'consumable';
+                            drops.push(conItem);
+                        }
+                    }
+                }
+            }
+
+            return drops;
+        }
+
+        function randomInRange(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        // ============================================================
+        // ENEMY AI
+        // ============================================================
+        function enemyAI(state, enemy, playerSide) {
+            const aliveTargets = playerSide.filter(p => p.isAlive);
+            if (aliveTargets.length === 0) return null;
+            const target = aliveTargets.find(p => p.isPlayer) || aliveTargets[0];
+
+            const availableSkills = (enemy.skills.active || []).filter(skill => {
+                if (!skill) return false;
+                const cdKey = skill.id;
+                const cooldown = enemy.cooldowns[cdKey] || 0;
+                if (cooldown > 0) return false;
+                const meta = BattleModule.parseSkillMeta(skill.effect);
+                if (enemy.mp < meta.mpCost) return false;
+                return true;
+            });
+
+            if (availableSkills.length > 0 && Math.random() < 0.3) {
+                const skill = availableSkills[Math.floor(Math.random() * availableSkills.length)];
+                return { type: 'skill', target, skill };
+            }
+            return { type: 'attack', target };
+        }
+
+        // ============================================================
+        // MAP ACTIONS (เชื่อมต่อ ExplorationModule)
+        // ============================================================
+        function setupMap() {
+            document.querySelectorAll('#mapActions button').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const action = btn.dataset.action;
+                    if (action === 'explore' || action === 'train' || action === 'search') {
+                        // ใช้ ExplorationModule.performAction
+                        const result = ExplorationModule.performAction(player, action);
+                        if (result.type === 'error') {
+                            addLog('แผนที่', `❌ ${result.message}`, 'system');
+                            renderAP();
+                            return;
+                        }
+
+                        // แสดงผล
+                        addLog('แผนที่', `ดำเนินการ: ${action} ใช้ AP 1`, 'system');
+
+                        if (result.type === 'battle') {
+                            const enemy = result.data.enemy;
+                            const enemyType = result.data.enemyType || 'Normal';
+                            addLog('แผนที่', `⚔️ พบศัตรู ${enemy["ชื่อ"]||'ศัตรู'}!`, 'system');
+                            // เรียก startBattle ด้วย enemy และ enemyType
+                            await startBattle(enemy, enemyType);
+                        } else if (result.type === 'event') {
+                            const event = result.data.event;
+                            addLog('แผนที่', `🎋 พบ Event: ${event.eventName||'เหตุการณ์'}`, 'system');
+                            // แสดง Event ใน panel events
+                            showPanel('events');
+                            // เรียก renderEvents ให้แสดง event นี้
+                            renderEventFromData(event);
+                        } else if (result.type === 'treasure') {
+                            const data = result.data;
+                            addLog('แผนที่', `🎁 พบสมบัติ! ได้รับ Gold ${data.gold||0}, EXP ${data.exp||0}`, 'system');
+                            // เพิ่ม Gold และ EXP
+                            if (data.gold) {
+                                try { PlayerModule.updateGold(player, data.gold); } catch(e) {}
+                            }
+                            if (data.exp) {
+                                try { PlayerModule.addExp(player, data.exp); } catch(e) {}
+                            }
+                            if (data.itemName) {
+                                // สร้างไอเทมจาก item generator
+                                const ilvl = Math.min(player.level + randomInRange(-2, 3), 90);
+                                const item = ItemGeneratorModule.generateItem('white', ilvl, 'accessory', player.stats?.luck||0);
+                                if (item) {
+                                    item.name = data.itemName;
+                                    player.inventory.push({
+                                        instanceId: 'inv_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+                                        itemId: item.id || item.name,
+                                        itemData: item,
+                                        quantity: 1,
+                                    });
+                                    addLog('แผนที่', `🎁 ได้รับไอเทม: ${item.name}`, 'system');
+                                }
+                            }
+                            SaveModule.saveGame(player);
+                            updateUI();
+                            renderAP();
+                        } else if (result.type === 'train') {
+                            const data = result.data;
+                            addLog('แผนที่', `🧘 ฝึกฝนสำเร็จ EXP +${data.exp||0} ฟื้น HP/MP`, 'system');
+                            // EXP และ HP/MP ถูกจัดการใน performAction แล้ว
+                            SaveModule.saveGame(player);
+                            updateUI();
+                            renderAP();
+                        } else if (result.type === 'nothing') {
+                            addLog('แผนที่', `🍃 ${result.data.message||'ไม่พบอะไร'}`, 'system');
+                            renderAP();
+                        }
+                    } else if (action === 'boss') {
+                        // ใช้ ExplorationModule.startBossFight
+                        const result = ExplorationModule.startBossFight(player, 'area');
+                        if (result.type === 'error') {
+                            addLog('แผนที่', `❌ ${result.message}`, 'system');
+                            return;
+                        }
+                        if (result.type === 'boss_battle') {
+                            const boss = result.data.boss;
+                            const bossType = result.data.bossType;
+                            addLog('แผนที่', `👹 พบ ${boss.name||'Boss'}!`, 'system');
+                            await startBattle(boss, bossType);
+                        }
+                    }
+                });
+            });
+        }
+
+        function renderMap() {
+            if (!player) return;
+            const zoneId = player.current_zone || 'MAP-001';
+            document.getElementById('mapLevel').textContent = `ระดับ ${Math.floor((player.level+9)/10)}`;
+            const zone = ExplorationModule.getZoneData(zoneId);
+            if (zone) {
+                document.getElementById('mapName').textContent = zone["ชื่อแมพ"] || zoneId;
+                document.getElementById('mapDesc').textContent = zone["คำอธิบาย"] || 'พื้นที่สำรวจ';
+            } else {
+                document.getElementById('mapName').textContent = zoneId;
+                document.getElementById('mapDesc').textContent = 'พื้นที่สำรวจ';
+            }
+
+            const enemies = ExplorationModule.getEnemiesInZone(zoneId);
+            const enemyEl = document.getElementById('mapEnemies');
+            if (enemies.length > 0) {
+                enemyEl.innerHTML = `👹 ศัตรูในพื้นที่: ${enemies.map(e => e["ชื่อ"]).join(', ')}`;
+            } else {
+                enemyEl.innerHTML = '👹 ไม่พบศัตรูในพื้นที่นี้';
+            }
+
+            const bossBtn = document.querySelector('#mapActions button[data-action="boss"]');
+            if (bossBtn) {
+                const boss = ExplorationModule.getBossInZone(zoneId);
+                bossBtn.disabled = !boss;
+                bossBtn.textContent = boss ? `👹 ${boss.name}` : '👹 บอส (ไม่มี)';
+            }
+        }
+
+        function renderAP() {
+            const ap = ExplorationModule.getAP(player);
+            document.getElementById('apValue').textContent = Math.floor(ap);
+            document.getElementById('apMax').textContent = ExplorationModule.CONSTANTS.MAX_AP;
+        }
+
+        // ============================================================
+        // EVENT PANEL (for displaying events)
+        // ============================================================
+        function renderEventFromData(event) {
+            const textEl = document.getElementById('eventText');
+            const choicesEl = document.getElementById('eventChoices');
+            const resultEl = document.getElementById('eventResult');
+            resultEl.style.display = 'none';
+
+            if (!event) {
+                textEl.textContent = 'ไม่มีเหตุการณ์ในขณะนี้';
+                choicesEl.innerHTML = '';
+                return;
+            }
+
+            textEl.textContent = event.description || event.text || 'เกิดเหตุการณ์บางอย่าง';
+
+            // ถ้ามี choices
+            if (event.choices && event.choices.length > 0) {
+                choicesEl.innerHTML = event.choices.map((c, i) =>
+                    `<button data-choice="${i}">${c.label}</button>`
+                ).join('');
+                choicesEl.querySelectorAll('button').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const idx = parseInt(btn.dataset.choice);
+                        const choice = event.choices[idx];
+                        if (choice && choice.result) {
+                            resultEl.style.display = 'block';
+                            resultEl.textContent = choice.result.text || '...';
+                            choicesEl.innerHTML = '';
+                            // ประมวลผลผลลัพธ์ (ถ้ามี)
+                            if (choice.result.gold) {
+                                try { PlayerModule.updateGold(player, choice.result.gold); } catch(e) {}
+                            }
+                            if (choice.result.exp) {
+                                try { PlayerModule.addExp(player, choice.result.exp); } catch(e) {}
+                            }
+                            if (choice.result.item_reward) {
+                                // สร้างไอเทม
+                                const ilvl = Math.min(player.level + randomInRange(-2, 3), 90);
+                                const item = ItemGeneratorModule.generateItem('white', ilvl, 'accessory', player.stats?.luck||0);
+                                if (item) {
+                                    item.name = choice.result.item_reward;
+                                    player.inventory.push({
+                                        instanceId: 'inv_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+                                        itemId: item.id || item.name,
+                                        itemData: item,
+                                        quantity: 1,
+                                    });
+                                }
+                            }
+                            if (choice.result.trigger_battle) {
+                                // เริ่มการต่อสู้
+                                startBattle(choice.result.trigger_battle, 'normal');
+                            }
+                            SaveModule.saveGame(player);
+                            updateUI();
+                            addLog('เหตุการณ์', choice.result.text || 'เลือกสำเร็จ', 'system');
+                        }
+                    });
+                });
+            } else if (event.auto_result) {
+                // auto result
+                const result = event.auto_result;
+                resultEl.style.display = 'block';
+                resultEl.textContent = result.text || '...';
+                if (result.gold) {
+                    try { PlayerModule.updateGold(player, result.gold); } catch(e) {}
+                }
+                if (result.exp) {
+                    try { PlayerModule.addExp(player, result.exp); } catch(e) {}
+                }
+                if (result.item_reward) {
+                    const ilvl = Math.min(player.level + randomInRange(-2, 3), 90);
+                    const item = ItemGeneratorModule.generateItem('white', ilvl, 'accessory', player.stats?.luck||0);
+                    if (item) {
+                        item.name = result.item_reward;
+                        player.inventory.push({
+                            instanceId: 'inv_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+                            itemId: item.id || item.name,
+                            itemData: item,
+                            quantity: 1,
+                        });
+                    }
+                }
+                if (result.trigger_battle) {
+                    startBattle(result.trigger_battle, 'normal');
+                }
+                SaveModule.saveGame(player);
+                updateUI();
+                addLog('เหตุการณ์', result.text || 'เหตุการณ์จบ', 'system');
+            } else {
+                choicesEl.innerHTML = '';
+            }
+        }
+
+        function renderEvents() {
+            // Default: show nothing
+            const textEl = document.getElementById('eventText');
+            textEl.textContent = 'ไม่มีเหตุการณ์ในขณะนี้';
+            document.getElementById('eventChoices').innerHTML = '';
+            document.getElementById('eventResult').style.display = 'none';
+        }
+
+        // ============================================================
+        // OTHER PANELS (Stats, Inventory, Equipment, Skills, Followers)
+        // ============================================================
+        function setupStats() {
+            document.querySelectorAll('.stats-toggle button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.stats-toggle button').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    const view = btn.dataset.view;
+                    document.getElementById('statsSimple').style.display = view === 'simple' ? 'grid' : 'none';
+                    document.getElementById('statsDetailed').style.display = view === 'detailed' ? 'grid' : 'none';
+                });
+            });
+
+            document.querySelectorAll('.stat-alloc').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const stat = btn.dataset.stat;
+                    if (player && player.stats.stat_points_available > 0) {
+                        try {
+                            PlayerModule.allocateStat(player, stat, 1);
+                            if (EquipmentModule && EquipmentModule.recalculateEquipmentStats) {
+                                EquipmentModule.recalculateEquipmentStats(player);
+                            }
+                            SaveModule.saveGame(player);
+                            renderStats();
+                            updateUI();
+                            addLog('ระบบ', `เพิ่ม ${stat.toUpperCase()} +1`, 'system');
+                        } catch (e) {
+                            addLog('ระบบ', `❌ ${e.message}`, 'system');
+                        }
+                    } else {
+                        addLog('ระบบ', '❌ ไม่มีคะแนนสถานะคงเหลือ', 'system');
+                    }
+                });
+            });
+        }
+
+        function renderStats() {
+            if (!player) return;
+            const cs = player.combat_stats || {};
+            const st = player.stats || {};
+            document.getElementById('statsRank').textContent = player.rank || 'จอมยุทธ์ฝึกหัด';
+
+            const simpleEl = document.getElementById('statsSimple');
+            simpleEl.innerHTML = `
+                <div class="stat-row"><span class="label">ระดับ</span><span class="value">${player.level}</span></div>
+                <div class="stat-row"><span class="label">EXP</span><span class="value">${player.exp||0}/${player.exp_required||100}</span></div>
+                <div class="stat-row"><span class="label">❤️ HP</span><span class="value hp-text">${Math.floor(cs.hp||0)}/${cs.hp_max||0}</span></div>
+                <div class="stat-row"><span class="label">💎 MP</span><span class="value mp-text">${Math.floor(cs.mp||0)}/${cs.mp_max||0}</span></div>
+                <div class="stat-row"><span class="label">⚔️ ATK</span><span class="value">${Math.floor(cs.atk||0)}</span></div>
+                <div class="stat-row"><span class="label">🛡️ DEF</span><span class="value">${Math.floor(cs.def||0)}</span></div>
+                <div class="stat-row"><span class="label">💨 AGI</span><span class="value">${st.agi||0}</span></div>
+                <div class="stat-row"><span class="label">💪 STR</span><span class="value">${st.str||0}</span></div>
+                <div class="stat-row"><span class="label">🛡️ CON</span><span class="value">${st.con||0}</span></div>
+                <div class="stat-row"><span class="label">🧠 INT</span><span class="value">${st.int||0}</span></div>
+                <div class="stat-row"><span class="label">🍀 LUCK</span><span class="value">${st.luck||0}</span></div>
+                <div class="stat-row"><span class="label">💰 Gold</span><span class="value highlight">${player.gold||0}</span></div>
+                <div class="stat-row"><span class="label">🎯 CRIT</span><span class="value">${(cs.crit||0).toFixed(1)}%</span></div>
+                <div class="stat-row"><span class="label">💥 CRIT DMG</span><span class="value">${(cs.crit_damage||0).toFixed(0)}%</span></div>
+                <div class="stat-row"><span class="label">🌀 DODGE</span><span class="value">${(cs.dodge||0).toFixed(1)}%</span></div>
+                <div class="stat-row"><span class="label">🎯 ACC</span><span class="value">${(cs.accuracy||0).toFixed(1)}%</span></div>
+            `;
+
+            const detailedEl = document.getElementById('statsDetailed');
+            const caps = PlayerModule.STAT_CAPS || {};
+            const allStats = {
+                'ระดับ': player.level,
+                'EXP': `${player.exp||0}/${player.exp_required||100}`,
+                'HP': `${Math.floor(cs.hp||0)}/${cs.hp_max||0}`,
+                'MP': `${Math.floor(cs.mp||0)}/${cs.mp_max||0}`,
+                'ATK': Math.floor(cs.atk||0),
+                'DEF': Math.floor(cs.def||0),
+                'STR': st.str||0,
+                'CON': st.con||0,
+                'AGI': st.agi||0,
+                'INT': st.int||0,
+                'LUCK': st.luck||0,
+                'CRIT': `${(cs.crit||0).toFixed(1)}% (max ${caps.crit||75}%)`,
+                'CRIT_DAMAGE': `${(cs.crit_damage||0).toFixed(0)}% (max ${caps.crit_damage||400}%)`,
+                'DODGE': `${(cs.dodge||0).toFixed(1)}% (max ${caps.dodge||70}%)`,
+                'ACCURACY': `${(cs.accuracy||0).toFixed(1)}% (max ${caps.accuracy||110}%)`,
+                'ARMOR_PEN': `${(cs.armor_pen||0).toFixed(1)}% (max ${caps.armor_pen||75}%)`,
+                'LIFE_STEAL': `${(cs.life_steal||0).toFixed(1)}% (max ${caps.life_steal||40}%)`,
+                'MANA_STEAL': `${(cs.mana_steal||0).toFixed(1)}% (max ${caps.mana_steal||20}%)`,
+                'KILL_CHANCE': `${(cs.kill_chance||0).toFixed(1)}% (max ${caps.kill_chance||8}%)`,
+                'Gold': player.gold||0,
+                'Rank': player.rank||'จอมยุทธ์ฝึกหัด',
+                'Zone': player.current_zone||'MAP-001',
+                'Stat Points': player.stats.stat_points_available||0,
+            };
+            detailedEl.innerHTML = Object.entries(allStats).map(([k, v]) =>
+                `<div class="stat-row"><span class="label">${k}</span><span class="value">${v}</span></div>`
+            ).join('');
+
+            document.getElementById('statPointsDisplay').textContent =
+                `คะแนนคงเหลือ: ${player.stats.stat_points_available||0}`;
+        }
+
+        function renderInventory() {
+            const container = document.getElementById('inventoryGrid');
+            if (!player || !player.inventory || player.inventory.length === 0) {
+                container.innerHTML = '<div class="text-muted">คลังว่าง</div>';
+                document.getElementById('invCount').textContent = '0 ชิ้น';
+                return;
+            }
+
+            const items = player.inventory;
+            document.getElementById('invCount').textContent = `${items.length} ชิ้น`;
+
+            container.innerHTML = items.map((entry, idx) => {
+                const itemData = entry.itemData;
+                if (!itemData) {
+                    return `<div class="item-card">
+                        <div class="item-name">${entry.itemId || 'unknown'}</div>
+                        <div class="item-detail">จำนวน: ${entry.quantity||1}</div>
+                        <div class="item-rarity white">ทั่วไป</div>
+                    </div>`;
+                }
+
+                const rarityMap = { white: 'ขาว', green: 'เขียว', blue: 'ฟ้า', purple: 'ม่วง', gold: 'ทอง', red: 'แดง' };
+                const rarityColor = itemData.rarity || 'white';
+                const rarityDisplay = rarityMap[rarityColor] || rarityColor;
+
+                // แสดง iLv, required_level, special_effect
+                let details = `iLv.${itemData.item_level||'?'} | ${rarityDisplay}`;
+                if (itemData.required_level) {
+                    details += ` | ต้อง Lv.${itemData.required_level}`;
+                }
+                if (itemData.special_effect) {
+                    details += ` | ✨ ${itemData.special_effect.name||'พิเศษ'}`;
+                }
+                // แสดง stat หลัก
+                const statStr = (itemData.stats || []).slice(0, 3).map(s => `${s.stat_id}:${s.value}`).join(' ');
+                const moreStat = (itemData.stats || []).length > 3 ? ` +${(itemData.stats||[]).length-3} stat` : '';
+
+                return `<div class="item-card" data-index="${idx}">
+                    <div class="item-name">${itemData.name || 'อุปกรณ์'}</div>
+                    <div class="item-detail">${details}</div>
+                    <div class="item-detail">${statStr}${moreStat}</div>
+                    <div class="item-rarity ${rarityColor}">${rarityDisplay}</div>
+                    <div class="item-detail" style="margin-top:4px;font-size:0.6rem;color:var(--text-spiritual);">💰 ${itemData.sell_price||0}</div>
+                </div>`;
+            }).join('');
+
+            // คลิกที่ item เพื่อสวมใส่ (ถ้าเป็น equipment)
+            container.querySelectorAll('.item-card').forEach(el => {
+                el.addEventListener('click', () => {
+                    const idx = parseInt(el.dataset.index);
+                    const entry = player.inventory[idx];
+                    if (!entry || !entry.itemData) return;
+                    const itemData = entry.itemData;
+                    if (itemData.type === 'weapon' || itemData.type === 'armor' || itemData.type === 'accessory') {
+                        try {
+                            // ตรวจสอบ required_level
+                            if (itemData.required_level && player.level < itemData.required_level) {
+                                addLog('ระบบ', `❌ ต้องมี Level ${itemData.required_level} ถึงจะสวมใส่ได้`, 'system');
+                                return;
+                            }
+                            // ใช้ equipment module
+                            const result = EquipmentModule.equipItem(player, entry.instanceId, itemData);
+                            if (result.success) {
+                                // อัปเดต stats
+                                if (EquipmentModule && EquipmentModule.recalculateEquipmentStats) {
+                                    EquipmentModule.recalculateEquipmentStats(player);
+                                }
+                                SaveModule.saveGame(player);
+                                updateUI();
+                                addLog('ระบบ', `✅ สวมใส่ ${itemData.name}`, 'system');
+                            }
+                        } catch (e) {
+                            addLog('ระบบ', `❌ ${e.message}`, 'system');
+                        }
+                    } else {
+                        addLog('ระบบ', `ℹ️ ${itemData.name} ไม่สามารถสวมใส่ได้`, 'system');
+                    }
+                });
+            });
+        }
+
+        function setupEquipment() { /* same */ }
+
+        function renderEquipment() {
+            const container = document.getElementById('equippedSlots');
+            if (!player || !player.equipment) {
+                container.innerHTML = '<div class="text-muted">ไม่มีอุปกรณ์</div>';
+                document.getElementById('eqPower').textContent = 'พลัง: 0';
+                return;
+            }
+            const eq = player.equipment;
+            const slots = ['weapon', 'armor', 'accessory'];
+            const slotNames = {
+                weapon: '⚔️ อาวุธ',
+                armor: '🛡️ เกราะ',
+                accessory: '💍 เครื่องประดับ'
+            };
+            container.innerHTML = slots.map(slot => {
+                const item = eq[slot];
+                const hasItem = item && item.itemData;
+                let itemDisplay = hasItem ? `${item.itemData.name||item.itemId||'อุปกรณ์'}` : 'ว่าง';
+                if (hasItem && item.itemData.item_level) {
+                    itemDisplay += ` (iLv.${item.itemData.item_level})`;
+                }
+                return `
+                    <div class="equipped-slot" data-slot="${slot}">
+                        <span class="slot-label">${slotNames[slot]}</span>
+                        <span class="slot-item ${hasItem ? '' : 'slot-empty'}">
+                            ${itemDisplay}
+                        </span>
+                        ${hasItem ? `<button class="slot-action" data-slot="${slot}">ถอด</button>` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            let power = 0;
+            try {
+                power = EquipmentModule.calculateTotalPowerScore(player) || 0;
+            } catch (e) {}
+            document.getElementById('eqPower').textContent = `พลัง: ${Math.floor(power)}`;
+
+            document.querySelectorAll('.slot-action').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const slot = btn.dataset.slot;
+                    try {
+                        EquipmentModule.unequipItem(player, slot);
+                        if (EquipmentModule && EquipmentModule.recalculateEquipmentStats) {
+                            EquipmentModule.recalculateEquipmentStats(player);
+                        }
+                        SaveModule.saveGame(player);
+                        renderEquipment();
+                        updateUI();
+                        addLog('ระบบ', `ถอด ${slot} ออกจากอุปกรณ์`, 'system');
+                    } catch (e) {
+                        addLog('ระบบ', `❌ ${e.message}`, 'system');
+                    }
+                });
+            });
+        }
+
+        function setupSkills() {
+            document.querySelectorAll('.skill-tab').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.skill-tab').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    renderSkills();
+                });
+            });
+        }
+
+        function renderSkills() {
+            const container = document.getElementById('skillsGrid');
+            if (!player || !player.skills) {
+                container.innerHTML = '<div class="text-muted">ไม่มีสกิล</div>';
+                document.getElementById('skillCount').textContent = '0 สกิล';
+                return;
+            }
+            const activeTab = document.querySelector('.skill-tab.active');
+            const type = activeTab ? activeTab.dataset.type : 'active';
+            const skillIds = type === 'active' ? player.skills.active : player.skills.passive;
+            const maxSlots = type === 'active' ? player.skills.active_slots : player.skills.passive_slots;
+            document.getElementById('skillCount').textContent =
+                `${skillIds.length}/${maxSlots} ${type === 'active' ? 'Active' : 'Passive'}`;
+            if (!skillIds || skillIds.length === 0) {
+                container.innerHTML = '<div class="text-muted">ไม่มีสกิล</div>';
+                return;
+            }
+            container.innerHTML = skillIds.map(sid => {
+                const skill = SkillDatabase.find(s => s.id === sid);
+                if (!skill) return '';
+                const meta = BattleModule.parseSkillMeta(skill.effect || '');
+                return `
+                    <div class="item-card">
+                        <div class="item-name">${skill.name}</div>
+                        <div class="item-detail">${skill.level||'ทั่วไป'}</div>
+                        <div class="item-detail">${skill.type||'Active'}</div>
+                        ${skill.effect ? `<div class="item-detail">${skill.effect.substring(0, 60)}${skill.effect.length>60?'...':''}</div>` : ''}
+                        ${meta.mpCost ? `<div class="item-detail">MP: ${meta.mpCost} | CD: ${meta.cooldown}</div>` : ''}
+                        <div class="item-rarity ${skill.level?.toLowerCase()||'white'}">${skill.level||'ทั่วไป'}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderFollowers() {
+            const container = document.getElementById('followersList');
+            if (!player || !player.followers || player.followers.length === 0) {
+                container.innerHTML = '<div class="text-muted">ยังไม่มีผู้ติดตาม</div>';
+                document.getElementById('followerCount').textContent = '0 คน';
+                return;
+            }
+            document.getElementById('followerCount').textContent = `${player.followers.length} คน`;
+            container.innerHTML = player.followers.map(f => `
+                <div class="follower-card">
+                    <div class="follower-avatar">🧘</div>
+                    <div class="follower-info">
+                        <div class="name">${f.name||'ผู้ติดตาม'}</div>
+                        <div class="detail">Lv.${f.level||1} • ${f.rarity||'ทั่วไป'}</div>
+                    </div>
+                    <span class="follower-status ${f.is_active !== false ? 'active' : 'inactive'}">
+                        ${f.is_active !== false ? '✅ ใช้งาน' : '⏸️ พัก'}
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        // ============================================================
+        // START
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+
+</body>
+</html>
