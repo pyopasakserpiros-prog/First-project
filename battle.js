@@ -23,7 +23,7 @@
 
 import { PlayerModule } from './player.js';
 import { InventoryModule } from './inventory.js';
-import { EquipmentModule } from './equipment edit.js';
+import { EquipmentModule } from './equipment.js'; // ✅ fixed import path
 import { SkillDatabase } from './skill database.js';
 import { EnemyDatabase } from './enemy.js';
 import { BossDatabase } from './boss database.js';
@@ -51,17 +51,18 @@ const BATTLE_CONSTANTS = Object.freeze({
     }),
     EXP_BASE: 100,
     EXP_EXPONENT: 1.8,
+    // ✅ normalized keys to lowercase with underscores to match battle flow
     EXP_MULTIPLIERS: Object.freeze({
-        Normal: 5,
-        Elite: 15,
-        'Mini-Boss': 50,
-        'Area Boss': 200,
+        normal: 5,
+        elite: 15,
+        mini_boss: 50,
+        area_boss: 200,
     }),
     GOLD_MULTIPLIERS: Object.freeze({
-        Normal: { min: 3, max: 8 },
-        Elite: { min: 15, max: 25 },
-        'Mini-Boss': { min: 50, max: 80 },
-        'Area Boss': { min: 200, max: 500 },
+        normal: { min: 3, max: 8 },
+        elite: { min: 15, max: 25 },
+        mini_boss: { min: 50, max: 80 },
+        area_boss: { min: 200, max: 500 },
     }),
 });
 
@@ -150,6 +151,59 @@ function getSkillTarget(effectText) {
     if (effectText.includes('หมู่') || effectText.includes('ทั้งหมด')) return 'all';
     if (effectText.includes('ตัวเอง') || effectText.includes('ตนเอง')) return 'self';
     return 'single';
+}
+
+// =============================================================================
+// SUPPORT BUFF PARSING (for Support-type skills)
+// =============================================================================
+
+function parseSupportBuffs(effectText, caster, target) {
+    const buffs = [];
+
+    // Stat mapping from display name to BuffType and factory method
+    const statMap = {
+        'ATK': { key: 'atk', type: BuffType.ATK_UP, factory: BuffFactory.atkUp },
+        'DEF': { key: 'def', type: BuffType.DEF_UP, factory: BuffFactory.defUp },
+        'CRIT': { key: 'crit', type: BuffType.CRIT_UP, factory: BuffFactory.critUp },
+        'DODGE': { key: 'dodge', type: BuffType.DODGE_UP, factory: BuffFactory.dodgeUp },
+        'ACCURACY': { key: 'accuracy', type: BuffType.ACCURACY_UP, factory: BuffFactory.accuracyUp },
+        'LIFE_STEAL': { key: 'life_steal', type: BuffType.LIFE_STEAL_UP, factory: BuffFactory.lifeStealUp },
+        'MANA_STEAL': { key: 'mana_steal', type: BuffType.MANA_STEAL_UP, factory: BuffFactory.manaStealUp },
+        'ARMOR_PEN': { key: 'armor_pen', type: BuffType.ARMOR_PEN_UP, factory: BuffFactory.armorPenUp },
+        'CRIT_DAMAGE': { key: 'crit_damage', type: BuffType.CRIT_DAMAGE_UP, factory: BuffFactory.critDamageUp },
+    };
+
+    // Find all "เพิ่ม STAT X%" patterns
+    const regex = /เพิ่ม\s*(ATK|DEF|CRIT|DODGE|ACCURACY|LIFE_STEAL|MANA_STEAL|ARMOR_PEN|CRIT_DAMAGE)\s*(\d+)%/gi;
+    let match;
+    while ((match = regex.exec(effectText)) !== null) {
+        const statName = match[1];
+        const percent = parseFloat(match[2]);
+        const mapping = statMap[statName.toUpperCase()];
+        if (!mapping) continue;
+
+        // Try to extract duration: "เป็นเวลา X เทิร์น"
+        let duration = 3;
+        const durationMatch = effectText.match(/เป็นเวลา\s*(\d+)\s*เทิร์น/i);
+        if (durationMatch) {
+            duration = parseInt(durationMatch[1], 10);
+        }
+
+        if (mapping.factory) {
+            const buff = mapping.factory(percent, duration, target.id);
+            buffs.push(buff);
+        }
+    }
+
+    // Shield detection (โล่ / shield)
+    if (effectText.includes('โล่') || effectText.includes('shield')) {
+        // For simplicity, shield amount = 50% of caster's ATK, duration 3
+        const shieldAmount = Math.floor(caster.atk * 0.5);
+        const buff = BuffFactory.shield(shieldAmount, 3, target.id);
+        buffs.push(buff);
+    }
+
+    return buffs;
 }
 
 // =============================================================================
@@ -589,6 +643,10 @@ function executeAutoAttack(state, attacker, defender, logPrefix = '') {
     }
 }
 
+// =============================================================================
+// EXECUTE SKILL — with Heal/Support branching
+// =============================================================================
+
 function executeSkill(state, attacker, defender, skill, logPrefix = '') {
     const log = state.logs;
 
@@ -625,6 +683,44 @@ function executeSkill(state, attacker, defender, skill, logPrefix = '') {
         attacker.cooldowns[cdKey] = meta.cooldown;
     }
 
+    // ========== BRANCH: Heal / Support ==========
+    if (tags.includes('Heal')) {
+        // Heal target
+        const healPercent = meta.damagePercent || 50; // fallback
+        const statType = meta.statType || 'INT';
+        let statValue = (statType === 'INT') ? attacker.int : attacker.atk;
+        statValue = attacker.buffs.applyToStat(statType.toLowerCase(), statValue);
+        const healAmount = Math.floor(statValue * (healPercent / 100));
+        const target = defender; // defender is the ally to heal
+        const actualHeal = Math.min(healAmount, target.hp_max - target.hp);
+        if (actualHeal > 0) {
+            target.hp += actualHeal;
+            log.push(`💚 ${attacker.name} ${logPrefix}ใช้ ${skill.name} รักษา ${target.name} ${actualHeal} HP (${target.hp}/${target.hp_max})`);
+        } else {
+            log.push(`${target.name} HP เต็มแล้ว ไม่ต้องรักษา`);
+        }
+        return true;
+    }
+
+    if (tags.includes('Support')) {
+        // Apply support buff to target (defender)
+        const target = defender;
+        const buffs = parseSupportBuffs(skill.effect, attacker, target);
+        let applied = false;
+        for (const buff of buffs) {
+            if (buff) {
+                target.buffs.addBuff(buff);
+                applied = true;
+                log.push(`✨ ${attacker.name} ${logPrefix}ใช้ ${skill.name} เพิ่ม ${buff.name} ให้ ${target.name}`);
+            }
+        }
+        if (!applied) {
+            log.push(`${attacker.name} ${logPrefix}ใช้ ${skill.name} แต่ไม่สามารถใช้ได้ในขณะนี้`);
+        }
+        return true;
+    }
+
+    // ========== DAMAGE SKILLS ==========
     // Hit check
     if (!checkHit(attacker, defender)) {
         log.push(`${attacker.name} ${logPrefix}ใช้ ${skill.name} แต่พลาด!`);
@@ -791,7 +887,7 @@ function followerAI(state, follower, playerSide, enemySide) {
     // ---- Archetype Logic ----
     switch (archetype) {
         case 'หมอเทวดา':
-        case 'โล่ชีวิต': {
+        case 'โล่ชีวิต':
             // หมอ: ถ้า HP ผู้เล่นต่ำกว่า 50% ให้รักษา
             const playerLow = playerSide.filter(p => p.isPlayer && p.hp / p.hp_max < 0.5);
             if (playerLow.length > 0 && tags.Heal.length > 0) {
@@ -800,7 +896,6 @@ function followerAI(state, follower, playerSide, enemySide) {
             }
             // ถ้าไม่มีใครต้องรักษา ให้โจมตี
             break;
-        }
 
         case 'นักพิษ':
             // ใช้ Poison ถ้ามี
@@ -939,13 +1034,15 @@ function processTurn(state, onPlayerAction = null) {
         // Damage Over Time (Poison, Burn, Bleed)
         const tickDamage = combatant.buffs.getTotalTickDamage(combatant.hp_max);
         if (tickDamage > 0) {
-            const actualDamage = Math.min(tickDamage, combatant.hp - 1);
-            combatant.hp = Math.max(1, combatant.hp - actualDamage);
-            log.push(`☠️ ${combatant.name} โดนดาเมจต่อเนื่อง ${actualDamage} (HP ${combatant.hp}/${combatant.hp_max})`);
-
-            if (combatant.hp <= 0) {
+            // ✅ fixed: allow HP to reach 0 and mark dead
+            const newHp = combatant.hp - tickDamage;
+            if (newHp <= 0) {
+                combatant.hp = 0;
                 combatant.isAlive = false;
                 log.push(`💀 ${combatant.name} ตายจากดาเมจต่อเนื่อง!`);
+            } else {
+                combatant.hp = newHp;
+                log.push(`☠️ ${combatant.name} โดนดาเมจต่อเนื่อง ${tickDamage} (HP ${combatant.hp}/${combatant.hp_max})`);
             }
         }
 
@@ -1049,7 +1146,7 @@ function processTurn(state, onPlayerAction = null) {
 
         // Follower AI
         if (combatant.isPlayer && combatant.type === 'follower') {
-            const action = followerAI(state, combatant, [state.player, ...state.followers.filter(f => f.isAlive)], state.enemies);
+            const action = followerAI(state, combatant, state.followers.filter(f => f.isAlive), state.enemies);
             if (action) {
                 if (action.type === 'attack') {
                     executeAutoAttack(state, combatant, action.target, `[${combatant.archetype || 'ผู้ติดตาม'}] `);
