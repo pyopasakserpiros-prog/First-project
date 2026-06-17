@@ -179,7 +179,7 @@ function parseSupportBuffs(effectText, caster, target) {
     while ((match = regex.exec(effectText)) !== null) {
         const statName = match[1];
         const percent = parseFloat(match[2]);
-        const mapping = statMap[statName];
+        const mapping = statMap[statName.toUpperCase()];
         if (!mapping) continue;
 
         // Try to extract duration: "เป็นเวลา X เทิร์น"
