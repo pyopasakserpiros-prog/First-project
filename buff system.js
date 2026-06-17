@@ -74,7 +74,7 @@ export class Buff {
         this.icon = icon || this.getDefaultIcon(type);
         this.stack = 1;
         this.maxStack = this.getMaxStack(type);
-        this.isDebuff = this.isDebuffType(type);
+        this._isDebuff = this.isDebuffType(type);
         this.tickDamage = 0; // สำหรับ Poison/Burn/Bleed
         this.tickHeal = 0; // สำหรับ Regen
     }
@@ -301,7 +301,7 @@ export class Buff {
      * ตรวจสอบว่าเป็น Debuff หรือไม่
      */
     isDebuff() {
-        return this.isDebuff;
+        return this._isDebuff;
     }
 
     /**

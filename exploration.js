@@ -19,15 +19,13 @@
 
 "use strict";
 
-import { EnemyDatabase } from './enemy.js';
+import { EnemyDatabase } from './enemy database.js';
 import { BossDatabase } from './boss database.js';
 import miniBossDatabase from './mini_boss.js';
 import { EventDatabase } from './event.js';
-import { MapDatabase } from './map.js';
+import { MapDatabase } from './map database.js';
 import { PlayerModule } from './player.js';
 import { InventoryModule } from './inventory.js';
-import { EquipmentModule } from './equipment edit.js';
-import { SaveModule } from './save.js';
 
 // =============================================================================
 // CONSTANTS
@@ -357,32 +355,65 @@ function performAction(player, action) {
 
     switch (action) {
         case 'explore': {
-            // 1. สุ่มศัตรู (55% Normal, 10% Elite)
-            const enemy = rollEnemy(zoneId, level);
-            if (enemy) {
-                const enemyType = enemy["ประเภท"] || "Normal";
+            // Use weighted random selection based on EXPLORATION_CONSTANTS.RATES
+            const rates = EXPLORATION_CONSTANTS.RATES.explore;
+            const totalWeight = rates.normal_enemy + rates.elite + rates.event + rates.treasure;
+            const roll = Math.random() * totalWeight;
+
+            let outcomeType = 'treasure';
+            if (roll < rates.normal_enemy) {
+                outcomeType = 'normal_enemy';
+            } else if (roll < rates.normal_enemy + rates.elite) {
+                outcomeType = 'elite';
+            } else if (roll < rates.normal_enemy + rates.elite + rates.event) {
+                outcomeType = 'event';
+            } else {
+                outcomeType = 'treasure';
+            }
+
+            // Execute based on outcome type
+            if (outcomeType === 'normal_enemy' || outcomeType === 'elite') {
+                const enemy = rollEnemy(zoneId, level);
+                if (enemy) {
+                    const enemyType = enemy["ประเภท"] || "Normal";
+                    return {
+                        type: 'battle',
+                        data: { enemy, enemyType },
+                        ap_used: 1,
+                    };
+                }
+                // Fallback to treasure if no enemy found
+                const treasure = rollTreasure(zoneId, level);
                 return {
-                    type: 'battle',
-                    data: { enemy, enemyType },
+                    type: 'treasure',
+                    data: treasure,
+                    ap_used: 1,
+                };
+            } else if (outcomeType === 'event') {
+                const event = rollEvent(Math.floor((level+9)/10), luck);
+                if (event) {
+                    return {
+                        type: 'event',
+                        data: { event },
+                        ap_used: 1,
+                    };
+                }
+                // Fallback to treasure if no event found
+                const treasure = rollTreasure(zoneId, level);
+                return {
+                    type: 'treasure',
+                    data: treasure,
+                    ap_used: 1,
+                };
+            } else {
+                // Treasure
+                const treasure = rollTreasure(zoneId, level);
+                return {
+                    type: 'treasure',
+                    data: treasure,
                     ap_used: 1,
                 };
             }
-            // 2. ถ้าไม่มีศัตรู สุ่ม Event หรือ Treasure
-            const event = rollEvent(Math.floor((level+9)/10), luck);
-            if (event) {
-                return {
-                    type: 'event',
-                    data: { event },
-                    ap_used: 1,
-                };
-            }
-            // 3. Treasure
-            const treasure = rollTreasure(zoneId, level);
-            return {
-                type: 'treasure',
-                data: treasure,
-                ap_used: 1,
-            };
         }
 
         case 'train': {
@@ -391,9 +422,11 @@ function performAction(player, action) {
             const expGain = Math.floor(baseExp * 0.8);
             PlayerModule.addExp(player, expGain);
             // ฟื้น HP/MP เล็กน้อย
+            let hpRegen = 0;
+            let mpRegen = 0;
             if (player.combat_stats) {
-                const hpRegen = Math.floor(player.combat_stats.hp_max * 0.05);
-                const mpRegen = Math.floor(player.combat_stats.mp_max * 0.05);
+                hpRegen = Math.floor(player.combat_stats.hp_max * 0.05);
+                mpRegen = Math.floor(player.combat_stats.mp_max * 0.05);
                 player.combat_stats.hp = Math.min(player.combat_stats.hp_max, player.combat_stats.hp + hpRegen);
                 player.combat_stats.mp = Math.min(player.combat_stats.mp_max, player.combat_stats.mp + mpRegen);
             }
@@ -519,21 +552,21 @@ function startBossFight(player, type = 'area') {
  * @param {string} bossId
  * @param {string} bossType - "area_boss" หรือ "mini_boss"
  */
-function recordBossDefeat(player, bossId, bossType) {
+function recordBossDefeat(player, zoneId, bossType) {
     if (!player) return;
     if (!player._boss_timestamps) player._boss_timestamps = {};
-    player._boss_timestamps[bossId] = Date.now();
+    player._boss_timestamps[zoneId] = Date.now();
 
     // เก็บว่าเคยปราบแล้ว (สำหรับการปลดล็อก)
     if (bossType === 'area_boss') {
         if (!player.defeated_bosses) player.defeated_bosses = [];
-        if (!player.defeated_bosses.includes(bossId)) {
-            player.defeated_bosses.push(bossId);
+        if (!player.defeated_bosses.includes(zoneId)) {
+            player.defeated_bosses.push(zoneId);
         }
     } else if (bossType === 'mini_boss') {
         if (!player.defeated_mini_bosses) player.defeated_mini_bosses = [];
-        if (!player.defeated_mini_bosses.includes(bossId)) {
-            player.defeated_mini_bosses.push(bossId);
+        if (!player.defeated_mini_bosses.includes(zoneId)) {
+            player.defeated_mini_bosses.push(zoneId);
         }
     }
 }

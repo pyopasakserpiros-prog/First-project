@@ -791,7 +791,7 @@ function followerAI(state, follower, playerSide, enemySide) {
     // ---- Archetype Logic ----
     switch (archetype) {
         case 'หมอเทวดา':
-        case 'โล่ชีวิต':
+        case 'โล่ชีวิต': {
             // หมอ: ถ้า HP ผู้เล่นต่ำกว่า 50% ให้รักษา
             const playerLow = playerSide.filter(p => p.isPlayer && p.hp / p.hp_max < 0.5);
             if (playerLow.length > 0 && tags.Heal.length > 0) {
@@ -800,6 +800,7 @@ function followerAI(state, follower, playerSide, enemySide) {
             }
             // ถ้าไม่มีใครต้องรักษา ให้โจมตี
             break;
+        }
 
         case 'นักพิษ':
             // ใช้ Poison ถ้ามี
@@ -1048,7 +1049,7 @@ function processTurn(state, onPlayerAction = null) {
 
         // Follower AI
         if (combatant.isPlayer && combatant.type === 'follower') {
-            const action = followerAI(state, combatant, state.followers.filter(f => f.isAlive), state.enemies);
+            const action = followerAI(state, combatant, [state.player, ...state.followers.filter(f => f.isAlive)], state.enemies);
             if (action) {
                 if (action.type === 'attack') {
                     executeAutoAttack(state, combatant, action.target, `[${combatant.archetype || 'ผู้ติดตาม'}] `);

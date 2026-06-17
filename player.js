@@ -510,6 +510,8 @@ function setPlayerName(player, newName) {
 function addExp(player, amount) {
   _assertPlayer(player);
   if (amount < 0) throw new Error("EXP amount must be non-negative.");
+  if (!Number.isFinite(amount)) throw new Error("EXP amount must be finite.");
+  if (!Number.isInteger(amount)) throw new Error("EXP amount must be an integer.");
 
   let leveled_up   = false;
   let levels_gained = 0;
@@ -835,7 +837,7 @@ function _recalculateCombatStatsWithEquipment(player) {
     // fallback: ใช้ base stats เฉย ๆ (ไม่มีการใส่ equipment)
     Object.assign(player.combat_stats, baseStats);
     // ปรับ hp/mp ไม่ให้เกิน max
-    player.combat_stats.hp = Math.min(player.com_bat_stats.hp_max, player.combat_stats.hp);
+    player.combat_stats.hp = Math.min(player.combat_stats.hp_max, player.combat_stats.hp);
     player.combat_stats.mp = Math.min(player.combat_stats.mp_max, player.combat_stats.mp);
   }
 

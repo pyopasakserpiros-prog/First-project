@@ -70,8 +70,9 @@ function loadGame() {
         }
 
         const player = JSON.parse(rawData);
-        // ตรวจสอบคร่าวๆ ว่ามีฟิลด์สำคัญ (id, name, level) ตาม Schema หรือไม่
-        if (!player.id || !player.name || player.level === undefined) {
+        // ตรวจสอบคร่าวๆ ว่ามีฟิลด์สำคัญตาม Schema หรือไม่
+        if (!player.id || !player.name || player.level === undefined ||
+            !player.stats || !player.combat_stats || !player.equipment || !player.inventory) {
             console.warn("[SaveSystem] loadGame: Loaded data does not look like a valid player object");
             return null;
         }
@@ -139,3 +140,5 @@ if (typeof window !== "undefined") {
 if (typeof module !== "undefined" && module.exports) {
     module.exports = SaveModule;
 }
+
+export { SaveModule };
